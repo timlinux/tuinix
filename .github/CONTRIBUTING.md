@@ -1,6 +1,14 @@
-# Contributing to nixmywindows
+<div align="center">
+  <img src="assets/LOGO.png" alt="nixmywindows logo" width="80" height="80">
+  
+  # Contributing to nixmywindows
+  
+  **Welcome to the nixmywindows contributor community!** 🎉
+</div>
 
 Thank you for your interest in contributing to nixmywindows! We welcome contributions from everyone and appreciate your help in making this project better.
+
+Whether you're fixing a bug, adding a feature, improving documentation, or sharing ideas, your contribution helps build a better terminal-based Linux experience for everyone. The Ubuntu philosophy of "I am because we are" is at the heart of our project - we're stronger together!
 
 ## Table of Contents
 

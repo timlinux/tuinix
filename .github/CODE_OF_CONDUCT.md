@@ -1,4 +1,10 @@
-# Code of Conduct
+<div align="center">
+  <img src="assets/LOGO.png" alt="nixmywindows logo" width="80" height="80">
+  
+  # Code of Conduct
+  
+  **Building a welcoming community for everyone** 🤝
+</div>
 
 ## Our Pledge
 

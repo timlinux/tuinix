@@ -1,6 +1,14 @@
-# .github Documentation
+<div align="center">
+  <img src="assets/LOGO.png" alt="nixmywindows logo" width="80" height="80">
+  
+  # .github Documentation
+  
+  **GitHub-specific configuration and community resources** 📁
+</div>
 
 This directory contains GitHub-specific configuration files and documentation for the nixmywindows project.
+
+Welcome to the heart of our project's community infrastructure! Here you'll find everything needed to contribute, collaborate, and maintain the high standards that make nixmywindows exceptional.
 
 ## Structure
 

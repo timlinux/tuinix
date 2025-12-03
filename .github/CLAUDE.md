@@ -1,6 +1,12 @@
-# Claude Configuration for nixmywindows
+<div align="center">
+  <img src="assets/LOGO.png" alt="nixmywindows logo" width="80" height="80">
+  
+  # Claude Configuration for nixmywindows
+  
+  **AI Assistant directives for consistent, productive collaboration** 🤖
+</div>
 
-This file contains Claude-specific configurations and directives to ensure consistent and productive AI assistance sessions for the nixmywindows project.
+This file contains Claude-specific configurations and directives to ensure consistent and productive AI assistance sessions for the nixmywindows project. It serves as a guide for maintaining project context and workflow consistency across multiple AI-assisted development sessions.
 
 ## Project Context
 

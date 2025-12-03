@@ -1,8 +1,14 @@
-# Contributor License Agreement (CLA)
+<div align="center">
+  <img src="assets/LOGO.png" alt="nixmywindows logo" width="80" height="80">
+  
+  # Contributor License Agreement (CLA)
+  
+  **Protecting your contributions and our community** 📄
+</div>
 
 ## Individual Contributor License Agreement
 
-Thank you for your interest in contributing to nixmywindows (the "Project"). This Contributor License Agreement ("Agreement") documents the rights granted by contributors to the Project.
+Thank you for your interest in contributing to nixmywindows (the "Project")! This Contributor License Agreement ("Agreement") documents the rights granted by contributors to the Project, ensuring that your valuable contributions are properly protected and can be used to benefit the entire community.
 
 ### 1. Definitions
 
