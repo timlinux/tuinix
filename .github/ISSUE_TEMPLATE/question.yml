@@ -1,0 +1,78 @@
+name: Question
+description: Ask a question about nixmywindows
+title: "[QUESTION]: "
+labels: ["question", "help wanted"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your question! We're here to help. 💡
+        
+        Before submitting, please check:
+        - The documentation in the repository
+        - Existing issues and discussions
+        - The NixOS manual and wiki
+        
+  - type: textarea
+    id: question
+    attributes:
+      label: What's your question?
+      description: Please be as specific as possible.
+      placeholder: How do I...?
+    validations:
+      required: true
+      
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: What category does your question fall into?
+      options:
+        - Installation and Setup
+        - Configuration
+        - ZFS and Storage
+        - Terminal Environment
+        - Package Management
+        - Troubleshooting
+        - Development
+        - Documentation
+        - Other
+    validations:
+      required: true
+      
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: |
+        Please provide any additional context that might help us understand your question better.
+        This could include:
+        - What you're trying to accomplish
+        - What you've already tried
+        - Your current setup
+        - Error messages
+      placeholder: I'm trying to... and I've already tried...
+    validations:
+      required: false
+      
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (if relevant)
+      description: If your question is environment-specific, please provide details
+      placeholder: |
+        - OS: [e.g. Ubuntu 22.04, NixOS 23.05]
+        - Hardware: [e.g. x86_64, ARM64]
+        - Nix version: [if known]
+    validations:
+      required: false
+      
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v23
+      with:
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v12
+      with:
+        name: nixmywindows
+        authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+    
+    - name: Build system
+      run: |
+        nix build .#nixosConfigurations.nixmywindows.config.system.build.toplevel --show-trace
+    
+    - name: Build ISO
+      run: |
+        nix build .#nixosConfigurations.nixmywindows.config.system.build.isoImage --show-trace
+    
+    - name: Generate changelog
+      id: changelog
+      run: |
+        if [ -n "${{ github.event.inputs.tag }}" ]; then
+          TAG=${{ github.event.inputs.tag }}
+        else
+          TAG=${GITHUB_REF#refs/tags/}
+        fi
+        echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        
+        # Generate changelog from commits since last tag
+        LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [ -n "$LAST_TAG" ]; then
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" $LAST_TAG..HEAD)
+        else
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)")
+        fi
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.changelog.outputs.tag }}
+        name: Release ${{ steps.changelog.outputs.tag }}
+        body: |
+          ## Changes
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## Installation
+          Download the ISO image and flash it to a USB drive or use it with a virtual machine.
+        files: |
+          result/iso/*.iso
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

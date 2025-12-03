@@ -1,0 +1,28 @@
+================================================================================
+PROMPT LOG - nixmywindows Repository
+================================================================================
+Date: 2025-12-03
+Session: Initial Repository Setup
+
+Prompt:
+I want to turn this into a Git repo.
+I would like a .github folder with README.md and assets/ for documentation (and add further docs there in a well organised manner as needed)
+Maintain a file in the root of this folder called PROMPT.log into which you should write a comprehensive log of every prompt I give you.
+Add all the niceties of a very well organised github repo, with things like package builds, testing in CI, templates for issues and PRs, a CLA agreement, badges on the readme showing project health and any other additions that the very nicest of git repositories have.
+When you are ready, make the initial commit in the local git repo and then push this to a new repo under timlinux/nixmywindows and make sire gh command line client is optimally set up to work in this repo.
+Leave claude directives and configurations in this folder to make future sessions with Claude productive and consistent.
+
+Action Taken:
+- Initialized Git repository
+- Created PROMPT.log file for tracking all prompts
+- Planning to create comprehensive GitHub repository structure with:
+  - .github folder with workflows, templates, and documentation
+  - CI/CD pipelines for testing and builds
+  - Issue and PR templates
+  - CLA agreement
+  - Professional README.md with badges
+  - Standard repository files (LICENSE, CONTRIBUTING.md, CODE_OF_CONDUCT.md)
+  - Claude configuration files for future sessions
+  - Initial commit and GitHub repository creation
+
+================================================================================
