@@ -6,7 +6,7 @@
     "code_blocks": false
   },
   "MD033": {
-    "allowed_elements": ["br", "details", "summary", "img"]
+    "allowed_elements": ["br", "details", "summary", "img", "a", "strong"]
   },
   "MD041": false,
   "MD046": {

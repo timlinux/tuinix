@@ -16,6 +16,7 @@ The script is idempotent - it only modifies README.md if the content has changed
 """
 
 import argparse
+import html
 import os
 import shutil
 import sys
@@ -174,11 +175,18 @@ def generate_markdown_table(contributors: List[Dict]) -> str:
         profile_url = contrib.get("html_url", f"https://github.com/{login}")
         contributions = contrib.get("contributions", 0)
 
+        # Escape values for HTML safety
+        login_escaped = html.escape(login, quote=True)
+        avatar_url_escaped = html.escape(avatar_url, quote=True)
+        profile_url_escaped = html.escape(profile_url, quote=True)
+
         # Create avatar cell with image linking to profile
-        avatar_cell = f'<a href="{profile_url}"><img src="{avatar_url}" width="50" height="50" alt="{login}"/></a>'
+        avatar_cell = f'<a href="{profile_url_escaped}"><img src="{avatar_url_escaped}" width="50" height="50" alt="{login_escaped}"/></a>'
 
         # Create GitHub username cell with bold link
-        github_cell = f'<a href="{profile_url}"><strong>{login}</strong></a>'
+        github_cell = (
+            f'<a href="{profile_url_escaped}"><strong>{login_escaped}</strong></a>'
+        )
 
         # Contributions count
         contrib_cell = str(contributions)
@@ -251,6 +259,7 @@ def write_readme_safely(content: str) -> bool:
     Returns:
         True if successful, False otherwise
     """
+    tmp_filename = None
     try:
         # Create a temporary file in the same directory as README
         readme_dir = os.path.dirname(os.path.abspath(README_FILE))
@@ -274,7 +283,7 @@ def write_readme_safely(content: str) -> bool:
     except Exception as e:
         error(f"Failed to write {README_FILE}: {e}")
         # Clean up temp file if it exists
-        if "tmp_filename" in locals() and os.path.exists(tmp_filename):
+        if tmp_filename and os.path.exists(tmp_filename):
             try:
                 os.remove(tmp_filename)
             except Exception:
