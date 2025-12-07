@@ -242,6 +242,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🐛 [Issue Tracker](https://github.com/timlinux/nixmywindows/issues)
 - 📧 [Email Support](mailto:timlinux@example.com)
 
+## 👥 Contributors
+
+This project is made possible by our amazing contributors:
+
+<!-- CONTRIBUTORS_START -->
+| Avatar | GitHub | Contributions |
+|--------|--------|---------------|
+| <img src="https://github.com/timlinux.png" width="64" height="64" alt="timlinux"> | [timlinux](https://github.com/timlinux) | Originator and maintainer |
+<!-- CONTRIBUTORS_END -->
+
 ---
 
 **Built with ❤️ by [Tim Sutton](https://github.com/timlinux) and the nixmywindows community.**
