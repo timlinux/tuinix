@@ -119,7 +119,7 @@
         # VM runners for each host (with VM-specific overrides)
         (lib.genAttrs (map (name: "vm-${name}") hostNames) (vmName:
           let hostname = lib.removePrefix "vm-" vmName;
-          in (mkNixosConfig hostname [ ./vm.nix ]).config.system.build.vm
+          in (mkNixosConfig hostname [ ./profiles/vm ]).config.system.build.vm
         )) //
         
         # ISO images (only for configurations that have ISO support)
