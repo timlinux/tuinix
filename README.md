@@ -223,6 +223,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **ZFS Community** - For the most advanced filesystem
 - **Terminal Tool Maintainers** - For building exceptional CLI tools
 
+## 👥 Contributors
+
+Thanks to all our amazing contributors! This table is automatically updated by our [contributors workflow](.github/workflows/update-contributors.yml).
+
+<!-- CONTRIBUTORS_START -->
+| Avatar | GitHub | Contributions |
+|--------|--------|---------------|
+| Placeholder | Placeholder | Placeholder |
+<!-- CONTRIBUTORS_END -->
+
 ## 📊 Project Status
 
 - ✅ **Active Development** - Regular updates and improvements
