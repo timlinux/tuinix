@@ -74,4 +74,5 @@ yarn-error.log*
 
 # Cache directories
 .cache/
-*.cache
+*.cache__pycache__/
+*.pyc
