@@ -2,6 +2,7 @@
 
 {
   imports = [
+    ./disks.nix
     ./hardware.nix
     ../../users/user.nix
   ];
