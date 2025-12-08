@@ -6,19 +6,8 @@
     (modulesPath + "/installer/scan/not-detected.nix")
   ];
 
-  # Basic filesystem for laptop
-  fileSystems."/" = {
-    device = "/dev/disk/by-label/nixos";
-    fsType = "ext4";
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-label/boot";
-    fsType = "vfat";
-  };
-
-  # Swap
-  swapDevices = [ ];
+  # Disk configuration handled by disks.nix
+  # No filesystem definitions here - let disks.nix handle ZFS layout
 
   # Boot configuration
   boot = {
