@@ -26,20 +26,37 @@ fi
 
 # Function to run gum via nix or fallback
 gum() {
-  # Always use fallback in non-interactive environments
-  case "$1" in
-    "confirm")
-      echo "Using default: yes"
-      return 0
-      ;;
-    "choose")
-      echo "$2"  # Return first option
-      ;;
-    "input")
-      shift 3  # Skip command and flags
-      echo "${1:-$DEFAULT_MEMORY}"  # Return value or default
-      ;;
-  esac
+  # Try to use gum from nix first
+  if command -v gum &>/dev/null || nix shell nixpkgs#gum -c gum --help &>/dev/null; then
+    if command -v gum &>/dev/null; then
+      command gum "$@"
+    else
+      nix shell nixpkgs#gum -c gum "$@"
+    fi
+  else
+    # Fallback for non-interactive environments
+    case "$1" in
+      "confirm")
+        echo "Using default: yes"
+        return 0
+        ;;
+      "choose")
+        # Extract first option from arguments
+        shift 1
+        while [[ "$1" == --* ]]; do
+          shift 2 2>/dev/null || shift 1
+        done
+        echo "$1"  # Return first non-flag option
+        ;;
+      "input")
+        shift
+        while [[ "$1" == --* ]]; do
+          shift 2 2>/dev/null || shift 1  
+        done
+        echo "${1:-$DEFAULT_MEMORY}"  # Return value or default
+        ;;
+    esac
+  fi
 }
 
 # Function to save configuration
@@ -81,32 +98,59 @@ clean_vm() {
   exit 0
 }
 
-# Enhanced QEMU arguments for better compatibility and performance
-get_enhanced_qemu_args() {
-  if [ "$ENABLE_ENHANCED_VIRTUALIZATION" = "true" ]; then
-    echo "-cpu host,+x2apic,+tsc-deadline,+hypervisor,+tsc_adjust,+umip,+md-clear,+stibp,+arch-capabilities,+ssbd,+xsaves \
--machine q35,accel=kvm,kernel_irqchip=on \
--smp 4,cores=2,threads=2 \
--drive file=$DISK_FILE,format=qcow2,if=virtio,cache=writethrough \
--netdev user,id=net0 \
--device virtio-net-pci,netdev=net0 \
--display sdl \
--usb \
--device qemu-xhci \
--device usb-tablet \
--rtc base=localtime \
--global kvm-pit.lost_tick_policy=delay"
+# Inspect disk contents to debug boot issues
+inspect_disk() {
+  echo "🔍 Inspecting disk contents..."
+  
+  # Create temporary mount point
+  local mount_point="/tmp/nixmywindows-inspect"
+  sudo mkdir -p "$mount_point"
+  
+  # Try to mount the disk as a loop device
+  echo "Attempting to analyze disk partitions..."
+  
+  # Use qemu-nbd to expose the qcow2 as a block device
+  if command -v qemu-nbd >/dev/null 2>&1; then
+    echo "Using qemu-nbd to inspect disk..."
+    
+    # Load nbd module if not loaded
+    sudo modprobe nbd 2>/dev/null || true
+    
+    # Connect the qcow2 image
+    sudo qemu-nbd -c /dev/nbd0 "$DISK_FILE"
+    
+    # List partitions
+    echo "Partitions found:"
+    sudo fdisk -l /dev/nbd0 2>/dev/null || echo "No valid partition table found"
+    
+    # Try to mount the root partition (usually nbd0p2 for EFI+ZFS setup)
+    echo ""
+    echo "Checking for boot files..."
+    
+    # Check EFI partition (usually nbd0p1)
+    if sudo mount /dev/nbd0p1 "$mount_point" 2>/dev/null; then
+      echo "✓ EFI partition mounted:"
+      ls -la "$mount_point" 2>/dev/null || echo "  (empty or unreadable)"
+      sudo umount "$mount_point"
+    else
+      echo "❌ Could not mount EFI partition"
+    fi
+    
+    # Disconnect
+    sudo qemu-nbd -d /dev/nbd0
+    
+    echo ""
+    echo "If no boot files found, installation likely incomplete."
+    echo "Suggestion: Boot from ISO and complete/redo installation."
+    
   else
-    echo "-cpu host \
--smp 4 \
--drive file=$DISK_FILE,format=qcow2,if=virtio \
--netdev user,id=net0 \
--device virtio-net-pci,netdev=net0 \
--display sdl \
--usb \
--device usb-tablet"
+    echo "qemu-nbd not available - cannot inspect disk contents"
+    echo "Suggestion: Install qemu-utils or try reinstalling"
   fi
+  
+  sudo rmdir "$mount_point" 2>/dev/null || true
 }
+
 
 # Check if qemu-system-x86_64 is available
 if ! command -v qemu-system-x86_64 &>/dev/null; then
@@ -122,17 +166,17 @@ if [ ! -f "$ISO_FILE" ]; then
   exit 1
 fi
 
-# Handle help and clean commands early
+# Handle help command
 if [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-  echo "Usage: $0 [install|run|clean|help]"
+  echo "Usage: $0 [iso|harddrive|clean|help]"
   echo ""
-  echo "Commands:"
-  echo "  install  - Boot from ISO for installation"
-  echo "  run      - Boot from disk after installation"
-  echo "  clean    - Remove VM disk image and configuration cache"
-  echo "  help     - Show this help message"
+  echo "Boot modes:"
+  echo "  iso       - Boot from ISO (for installation)"
+  echo "  harddrive - Boot from VM disk (after installation)"
+  echo "  clean     - Remove VM disk and configuration"
+  echo "  help      - Show this help message"
   echo ""
-  echo "VM Configuration will be prompted interactively using gum"
+  echo "If no argument provided, script will ask interactively."
   echo "Default settings: Memory: $DEFAULT_MEMORY, Disk: $DEFAULT_DISK_SIZE"
   exit 0
 fi
@@ -141,60 +185,61 @@ if [ "$1" = "clean" ]; then
   clean_vm
 fi
 
-# Determine boot mode early to handle configuration appropriately
+# Simple boot mode selection
 if [ $# -eq 0 ]; then
-  MODE=$(gum choose "install" "run" --header "Choose VM mode:")
+  echo "🖥️  NixMyWindows VM Launcher"
+  echo ""
+  
+  # Check if disk exists
+  if [ -f "$DISK_FILE" ]; then
+    echo "Found existing VM disk: $DISK_FILE"
+  else
+    echo "No VM disk found - will create new one"
+  fi
+  
+  echo ""
+  BOOT_MODE=$(gum choose "harddrive" "iso" "clean" --header "How do you want to boot?")
 else
-  MODE="$1"
+  case "$1" in
+    "iso"|"install")
+      BOOT_MODE="iso"
+      ;;
+    "run"|"harddrive"|"hd")
+      BOOT_MODE="harddrive"
+      ;;
+    "clean")
+      BOOT_MODE="clean"
+      ;;
+    *)
+      echo "Error: Unknown option '$1'"
+      echo "Use: $0 [iso|harddrive|clean]"
+      exit 1
+      ;;
+  esac
 fi
 
-# Configuration handling based on mode
-case "$MODE" in
-"install")
-  # For installation, always prompt for configuration
-  echo "🖥️  NixMyWindows VM Configuration (Installation)"
-  echo ""
+# Handle clean mode
+if [ "$BOOT_MODE" = "clean" ]; then
+  clean_vm
+fi
 
-  # Memory configuration
-  if gum confirm "Use default memory size ($DEFAULT_MEMORY)?"; then
-    MEMORY="$DEFAULT_MEMORY"
-  else
-    MEMORY=$(gum input --placeholder "Enter memory size (e.g., 4G, 8G, 16G)" --value "$DEFAULT_MEMORY")
-  fi
+# VM Configuration
+echo ""
+echo "🖥️  VM Configuration"
 
-  # Disk configuration
-  if gum confirm "Use default disk size ($DEFAULT_DISK_SIZE)?"; then
-    DISK_SIZE="$DEFAULT_DISK_SIZE"
-  else
-    DISK_SIZE=$(gum input --placeholder "Enter disk size (e.g., 20G, 50G, 100G)" --value "$DEFAULT_DISK_SIZE")
-  fi
-  
-  # Save configuration for future runs
+# Try to load existing config first, otherwise use defaults
+if load_config 2>/dev/null; then
+  echo "Using saved configuration:"
+  echo "  Memory: $MEMORY"
+  echo "  Disk: $DISK_SIZE"
+else
+  echo "Using default configuration:"
+  MEMORY="$DEFAULT_MEMORY"
+  DISK_SIZE="$DEFAULT_DISK_SIZE"
+  echo "  Memory: $MEMORY" 
+  echo "  Disk: $DISK_SIZE"
   save_config
-  ;;
-
-"run")
-  # For run mode, require existing configuration
-  if ! load_config; then
-    echo "❌ No VM configuration found!"
-    echo "You must run installation mode first: $0 install"
-    echo "Or run clean and install again: $0 clean && $0 install"
-    exit 1
-  fi
-  
-  if [ ! -f "$DISK_FILE" ]; then
-    echo "❌ No disk image found!"
-    echo "You must run installation mode first: $0 install"
-    exit 1
-  fi
-  ;;
-
-*)
-  echo "Error: Unknown command '$MODE'"
-  echo "Use '$0 help' for usage information"
-  exit 1
-  ;;
-esac
+fi
 
 echo ""
 echo "VM Configuration:"
@@ -203,62 +248,142 @@ echo "  Disk: $DISK_SIZE"
 echo "  ISO: $ISO_FILE"
 echo ""
 
-# Create disk image if it doesn't exist (only for install mode)
-if [ "$MODE" = "install" ] && [ ! -f "$DISK_FILE" ]; then
+# Create disk image if it doesn't exist
+if [ ! -f "$DISK_FILE" ]; then
   echo "Creating virtual disk: $DISK_FILE ($DISK_SIZE)"
   qemu-img create -f qcow2 "$DISK_FILE" "$DISK_SIZE"
 fi
 
-# Launch VM based on mode
-case "$MODE" in
-"install")
-  echo ""
-  echo "🚀 Starting VM in installation mode (booting from ISO)"
-  echo "After installation, shutdown the VM and run: ./run-vm.sh run"
-  echo ""
+echo ""
+if ! gum confirm "Start the VM now?"; then
+  echo "VM startup cancelled."
+  exit 0
+fi
 
-  if ! gum confirm "Start the VM now?"; then
-    echo "VM startup cancelled."
-    exit 0
+# Get base QEMU arguments (without drive, we'll add that separately)
+get_base_qemu_args() {
+  if [ "$ENABLE_ENHANCED_VIRTUALIZATION" = "true" ]; then
+    echo "-cpu host,+x2apic,+tsc-deadline,+hypervisor,+tsc_adjust,+umip,+md-clear,+stibp,+arch-capabilities,+ssbd,+xsaves \
+-machine q35,accel=kvm,kernel_irqchip=on \
+-smp 4,cores=2,threads=2 \
+-netdev user,id=net0 \
+-device virtio-net-pci,netdev=net0 \
+-display sdl \
+-usb \
+-device qemu-xhci \
+-device usb-tablet \
+-rtc base=localtime \
+-global kvm-pit.lost_tick_policy=delay"
+  else
+    echo "-cpu host \
+-smp 4 \
+-netdev user,id=net0 \
+-device virtio-net-pci,netdev=net0 \
+-display sdl \
+-usb \
+-device usb-tablet"
   fi
+}
 
-  QEMU_ARGS=$(get_enhanced_qemu_args)
-  
-  echo "🐛 If you experience kernel panics, try running: ENABLE_ENHANCED_VIRTUALIZATION=false $0 install"
+BASE_QEMU_ARGS=$(get_base_qemu_args)
+
+# Launch VM based on boot mode
+case "$BOOT_MODE" in
+"iso")
+  echo ""
+  echo "🚀 Starting VM - booting from ISO"
   echo ""
   
   qemu-system-x86_64 \
     -enable-kvm \
     -m "$MEMORY" \
-    $QEMU_ARGS \
+    $BASE_QEMU_ARGS \
+    -drive file="$DISK_FILE",format=qcow2,if=virtio,cache=writethrough \
     -cdrom "$ISO_FILE" \
     -boot order=dc,menu=on \
-    -name "NixMyWindows (Installation)"
+    -name "NixMyWindows (ISO Boot)"
   ;;
 
-"run")
+"harddrive")
   echo ""
-  echo "🚀 Starting VM in normal mode (booting from disk)"
+  echo "🚀 Starting VM - booting from hard drive"
   echo ""
-
-  if ! gum confirm "Start the VM now?"; then
-    echo "VM startup cancelled."
-    exit 0
-  fi
-
-  QEMU_ARGS=$(get_enhanced_qemu_args)
   
-  qemu-system-x86_64 \
-    -enable-kvm \
-    -m "$MEMORY" \
-    $QEMU_ARGS \
-    -boot order=c,menu=on \
-    -name "NixMyWindows"
+  # Check if disk exists and has reasonable size
+  if [ ! -f "$DISK_FILE" ]; then
+    echo "❌ No disk image found! Boot from ISO first to install."
+    exit 1
+  fi
+  
+  # Show disk info for debugging
+  echo "Disk information:"
+  qemu-img info "$DISK_FILE" | head -8
+  echo ""
+  
+  # Check if disk seems to have been properly installed
+  disk_size_used=$(qemu-img info "$DISK_FILE" | grep "disk size" | awk '{print $3}')
+  disk_size_num=$(echo "$disk_size_used" | sed 's/[^0-9.]//g')
+  
+  # Convert to integer for comparison (3.3 -> 3, etc.)
+  disk_size_int=${disk_size_num%.*}
+  
+  if [ "$disk_size_int" -lt 2 ]; then
+    echo ""
+    echo "⚠️  WARNING: Disk only uses ${disk_size_used} - installation appears incomplete!"
+    echo "   Even a minimal NixOS installation should use 2GB+"
+    echo ""
+    if gum confirm "The installation seems incomplete. Boot from ISO to reinstall instead?"; then
+      BOOT_MODE="iso"
+    else
+      echo "Proceeding with possibly incomplete installation..."
+    fi
+  else
+    echo "✓ Disk usage ${disk_size_used} looks reasonable for minimal install"
+  fi
+  
+  # If we're still booting from hard drive after the check
+  if [ "$BOOT_MODE" = "harddrive" ]; then
+    # Use the same configuration as ISO boot but without the CD
+    # This ensures consistency between installation and running
+    echo "Booting from disk (same config as installation)..."
+    
+    # Try offering boot menu first to see what's available
+    echo "Starting with boot menu - you may need to select boot device manually..."
+    
+    # Try different boot approaches
+    if gum confirm "Try simple boot mode? (if advanced mode fails)"; then
+      echo "Using simple boot configuration..."
+      qemu-system-x86_64 \
+        -enable-kvm \
+        -m "$MEMORY" \
+        -cpu host \
+        -smp 2 \
+        -drive file="$DISK_FILE",format=qcow2,if=virtio \
+        -netdev user,id=net0 \
+        -device e1000,netdev=net0 \
+        -display sdl \
+        -boot c \
+        -name "NixMyWindows (Simple)"
+    else
+      echo "Using advanced boot configuration..."
+      qemu-system-x86_64 \
+        -enable-kvm \
+        -m "$MEMORY" \
+        $BASE_QEMU_ARGS \
+        -drive file="$DISK_FILE",format=qcow2,if=virtio,cache=writethrough \
+        -boot order=c,menu=on \
+        -name "NixMyWindows" \
+        -serial stdio \
+        -no-reboot
+    fi
+  else
+    # Boot mode was changed to ISO during the check, fall through to ISO case
+    echo "Switching to ISO boot..."
+  fi
   ;;
 
 *)
-  echo "Error: Unknown command '$MODE'"
-  echo "Use '$0 help' for usage information"
+  echo "Error: Unknown boot mode '$BOOT_MODE'"
   exit 1
   ;;
 esac

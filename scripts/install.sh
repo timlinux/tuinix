@@ -304,12 +304,30 @@ generate_host_config() {
   imports = [
     ./disks.nix
     ./hardware.nix
+    ../../modules/system
     ../../users/user.nix
     ../../users/admin.nix
   ];
 
   networking.hostName = hostname;
   system.stateVersion = "24.05";
+  
+  # Enable ZFS support
+  nixmywindows.zfs = {
+    enable = true;
+    encryption = true;
+    autoSnapshot = true;
+  };
+  
+  # Boot configuration for ZFS
+  boot = {
+    supportedFilesystems = [ "zfs" ];
+    zfs.requestEncryptionCredentials = true;
+    loader = {
+      systemd-boot.enable = true;
+      efi.canTouchEfiVariables = true;
+    };
+  };
   
   # Locale configuration
   i18n.defaultLocale = "$LOCALE";
