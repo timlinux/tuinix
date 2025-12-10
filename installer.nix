@@ -4,11 +4,35 @@
 {
   imports = [ (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix") ];
 
-  # Include the nixmywindows flake for installation
+  # Include only essential flake files for installation
   isoImage.contents = [
     {
-      source = ./.;
-      target = "/nixmywindows";
+      source = ./flake.nix;
+      target = "/nixmywindows/flake.nix";
+    }
+    {
+      source = ./flake.lock;
+      target = "/nixmywindows/flake.lock";
+    }
+    {
+      source = ./hosts;
+      target = "/nixmywindows/hosts";
+    }
+    {
+      source = ./modules;
+      target = "/nixmywindows/modules";
+    }
+    {
+      source = ./users;
+      target = "/nixmywindows/users";
+    }
+    {
+      source = ./templates;
+      target = "/nixmywindows/templates";
+    }
+    {
+      source = ./scripts;
+      target = "/nixmywindows/scripts";
     }
     {
       source = ./README.txt;
@@ -17,10 +41,6 @@
     {
       source = ./scripts/install.sh;
       target = "/install.sh";
-    }
-    {
-      source = ./templates/disko-template.nix;
-      target = "/nixmywindows/templates/disko-template.nix";
     }
   ];
 
@@ -53,9 +73,8 @@
     initialPassword = lib.mkForce null;
   };
 
-  # Network configuration
+  # Minimal network configuration (faster than NetworkManager)
   networking.useDHCP = lib.mkForce true;
-  networking.networkmanager.enable = lib.mkForce true;
   networking.firewall.enable = lib.mkForce false;
 
   # Enable flakes and nix-command for disko and nixos-install

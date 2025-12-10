@@ -81,6 +81,9 @@
 
         # Build tools
         gnumake
+
+        # open source clone of claude code
+        opencode
       ];
 
     in flake-utils.lib.eachDefaultSystem (system: {
@@ -146,9 +149,7 @@
               hostname = "nixos";
               inherit (nixpkgs) lib;
             };
-            modules = [
-              ./installer.nix
-            ];
+            modules = [ ./installer.nix ];
           };
         };
 
