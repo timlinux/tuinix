@@ -3,8 +3,6 @@
 
 {
   imports = [
-    ./development
-    ./server
     ./workstation
   ];
 }

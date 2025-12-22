@@ -58,13 +58,20 @@ in
           encryption = "aes-256-gcm";
           keyformat = "passphrase";
           keylocation = "prompt";
+          "com.sun:auto-snapshot" = "false";
         };
 
         datasets = {
           "root" = {
             type = "zfs_fs";
             mountpoint = "/";
-            options."com.sun:auto-snapshot" = "false";
+            options = {
+              "com.sun:auto-snapshot" = "false";
+              mountpoint = "/";
+            };
+            postCreateHook = ''
+              zfs snapshot {{ZFS_POOL_NAME}}/root@blank
+            '';
           };
 
           "nix" = {

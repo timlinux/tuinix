@@ -20,21 +20,6 @@
     };
   };
 
-  # Programs
-  programs = {
-    # Git configuration
-    git.enable = true;
-
-    # Shell configuration
-    fish.enable = true;
-
-    # GPG agent
-    gnupg.agent = {
-      enable = true;
-      enableSSHSupport = true;
-    };
-  };
-
   # Security settings appropriate for workstation
   security = {
     # Polkit for user actions

@@ -5,11 +5,13 @@
   # Boot loader configuration
   boot = {
     loader = {
-      systemd-boot = {
+      grub = {
         enable = lib.mkDefault true;
+        efiSupport = lib.mkDefault true;
+        efiInstallAsRemovable = lib.mkDefault true;
+        device = lib.mkDefault "nodev";
         configurationLimit = 10;
       };
-      efi.canTouchEfiVariables = lib.mkDefault true;
       timeout = lib.mkDefault 5;
     };
     

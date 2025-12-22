@@ -319,15 +319,7 @@ generate_host_config() {
     autoSnapshot = true;
   };
   
-  # Boot configuration for ZFS
-  boot = {
-    supportedFilesystems = [ "zfs" ];
-    zfs.requestEncryptionCredentials = true;
-    loader = {
-      systemd-boot.enable = true;
-      efi.canTouchEfiVariables = true;
-    };
-  };
+  # Boot configuration for ZFS - will be overridden by hardware.nix
   
   # Locale configuration
   i18n.defaultLocale = "$LOCALE";
@@ -360,10 +352,14 @@ EOF
   # Hardware configuration will be updated by nixos-generate-config
   boot = {
     initrd = {
-      availableKernelModules = [ "xhci_pci" "nvme" "usb_storage" "sd_mod" ];
+      availableKernelModules = [ 
+        "ahci" "xhci_pci" "virtio_pci" "virtio_scsi" 
+        "sd_mod" "sr_mod" "nvme" "ehci_pci" "usbhid" 
+        "usb_storage" "sdhci_pci" 
+      ];
       kernelModules = [ ];
     };
-    kernelModules = [ "kvm-intel" ];
+    kernelModules = [ "kvm-intel" "kvm-amd" ];
     extraModulePackages = [ ];
   };
 
@@ -423,7 +419,7 @@ generate_hardware_config() {
     # Generate hardware configuration
     nixos-generate-config --root /mnt --dir /tmp/nixos-config
     
-    # Merge the generated hardware with our template, preserving hostId
+    # Merge the generated hardware with our template, preserving hostId and ZFS settings
     if [[ -f "/tmp/nixos-config/hardware-configuration.nix" ]]; then
         # Extract hardware-specific parts and merge with our template
         cat > "$host_dir/hardware.nix" <<EOF
@@ -434,7 +430,44 @@ generate_hardware_config() {
   networking.hostId = "$HOST_ID";
   imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
 
-$(sed -n '/boot\./,/};/p' /tmp/nixos-config/hardware-configuration.nix | sed 's/^/  /')
+  # ZFS support - Critical boot configuration
+  boot = {
+    supportedFilesystems = [ "zfs" ];
+    zfs = {
+      requestEncryptionCredentials = true;
+      forceImportRoot = false;
+      forceImportAll = false;
+      # Ensure ZFS pools are available early
+      extraPools = [ "$ZFS_POOL_NAME" ];
+    };
+    loader = {
+      grub = {
+        enable = true;
+        efiSupport = true;
+        efiInstallAsRemovable = true;
+        device = "nodev";
+        # Use the ZFS root dataset
+        zfsSupport = true;
+      };
+    };
+    initrd = {
+      availableKernelModules = [ 
+        "ahci" "xhci_pci" "virtio_pci" "virtio_scsi" 
+        "sd_mod" "sr_mod" "nvme" "ehci_pci" "usbhid" 
+        "usb_storage" "sdhci_pci" 
+      ];
+      # ZFS needs to be available in initrd
+      kernelModules = [ "zfs" ];
+      # Import ZFS pool during boot
+      postDeviceCommands = lib.mkAfter ''
+        echo "Importing ZFS pool $ZFS_POOL_NAME..."
+        zpool import -f $ZFS_POOL_NAME || true
+        echo "ZFS pool import complete."
+      '';
+    };
+    kernelModules = [ "kvm-intel" "kvm-amd" ];
+    extraModulePackages = [ ];
+  };
 
 $(sed -n '/hardware\./,/};/p' /tmp/nixos-config/hardware-configuration.nix | sed 's/^/  /' || echo '  hardware = {
     enableAllFirmware = true;
@@ -442,6 +475,9 @@ $(sed -n '/hardware\./,/};/p' /tmp/nixos-config/hardware-configuration.nix | sed
   };')
 
 $(sed -n '/powerManagement\./p' /tmp/nixos-config/hardware-configuration.nix | sed 's/^/  /' || echo '  powerManagement.cpuFreqGovernor = lib.mkDefault "powersave";')
+
+  # ZFS services
+  services.zfs.autoScrub.enable = true;
 }
 EOF
     fi
@@ -470,6 +506,36 @@ install_nixos() {
     fi
     
     gum style --foreground="#00cc00" "✅ NixOS installation completed"
+}
+
+# Configure ZFS bootfs property and install GRUB
+configure_zfs_boot() {
+    gum style --foreground="#0066cc" "🔧 Configuring ZFS boot properties"
+    
+    # Set the bootfs property on the ZFS pool
+    zpool set bootfs="$ZFS_POOL_NAME/root" "$ZFS_POOL_NAME"
+    
+    # Verify the bootfs property is set correctly
+    local bootfs_prop
+    bootfs_prop=$(zpool get -H -o value bootfs "$ZFS_POOL_NAME")
+    if [[ "$bootfs_prop" == "$ZFS_POOL_NAME/root" ]]; then
+        gum style --foreground="#00cc00" "✅ ZFS bootfs property set to: $bootfs_prop"
+    else
+        gum style --foreground="#ff0000" "❌ Failed to set ZFS bootfs property!"
+        exit 1
+    fi
+    
+    # Ensure the root dataset is mounted at the correct location
+    zfs set mountpoint=/ "$ZFS_POOL_NAME/root"
+    
+    # Manually install GRUB to ensure proper ZFS support
+    gum style --foreground="#0066cc" "Installing GRUB with ZFS support..."
+    nixos-enter --root /mnt --command "grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=NixOS --removable"
+    
+    # Generate GRUB configuration
+    nixos-enter --root /mnt --command "nixos-rebuild boot"
+    
+    gum style --foreground="#00cc00" "✅ ZFS boot configuration completed"
 }
 
 # Copy flake to new system
@@ -554,6 +620,7 @@ main() {
     format_disk
     generate_hardware_config
     install_nixos
+    configure_zfs_boot
     copy_flake
     copy_flake_to_user
     setup_root_password
