@@ -249,7 +249,8 @@ This project is made possible by our amazing contributors:
 <!-- CONTRIBUTORS_START -->
 | Avatar | GitHub | Contributions |
 |--------|--------|---------------|
-| <img src="https://github.com/timlinux.png" width="64" height="64" alt="timlinux"> | [timlinux](https://github.com/timlinux) | Originator and maintainer |
+| <img src="https://avatars.githubusercontent.com/u/178003?v=4" width="64" height="64" alt="timlinux"> | [timlinux](https://github.com/timlinux) | 27 |
+| <img src="https://avatars.githubusercontent.com/in/1143301?v=4" width="64" height="64" alt="Copilot"> | [Copilot](https://github.com/apps/copilot-swe-agent) | 4 |
 <!-- CONTRIBUTORS_END -->
 
 ---
