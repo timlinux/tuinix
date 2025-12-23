@@ -42,10 +42,6 @@
       source = ./build-info.txt;
       target = "/nixmywindows/build-info.txt";
     }
-    {
-      source = ./build-info.json;
-      target = "/nixmywindows/build-info.json";
-    }
   ];
 
   # Basic packages for installation
@@ -114,6 +110,6 @@
     };
   };
 
-  system.stateVersion = "24.05";
+  system.stateVersion = "25.11";
 }
 

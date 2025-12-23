@@ -10,28 +10,16 @@ TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
 BUILD_DATE=$(date -u '+%Y%m%d-%H%M%S')
 
 # Git commit info if available
-if git rev-parse --git-dir > /dev/null 2>&1; then
-    COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-    BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  COMMIT_HASH=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 else
-    COMMIT_HASH="unknown"
-    BRANCH="unknown"
+  COMMIT_HASH="unknown"
+  BRANCH="unknown"
 fi
 
-# Create build info JSON
-cat > build-info.json <<EOF
-{
-  "version": "$VERSION",
-  "timestamp": "$TIMESTAMP",
-  "build_date": "$BUILD_DATE",
-  "commit_hash": "$COMMIT_HASH",
-  "branch": "$BRANCH",
-  "builder": "$(whoami)@$(hostname)"
-}
-EOF
-
 # Create simple text version for easy reading
-cat > build-info.txt <<EOF
+cat >build-info.txt <<EOF
 nixmywindows Build Information
 ==============================
 Version: $VERSION
@@ -42,3 +30,4 @@ EOF
 
 echo "Build information generated:"
 cat build-info.txt
+

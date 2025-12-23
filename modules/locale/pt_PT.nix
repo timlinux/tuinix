@@ -22,15 +22,10 @@
   console = {
     font = "Lat2-Terminus16";
     keyMap = "pt-latin1";
-    useXkbConfig = true;
   };
 
   # Timezone (Portugal)
   time.timeZone = lib.mkDefault "Europe/Lisbon";
 
-  # Keyboard layout (Portuguese)
-  services.xserver.xkb = {
-    layout = lib.mkDefault "pt";
-    variant = lib.mkDefault "";
-  };
 }
+

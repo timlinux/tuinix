@@ -19,17 +19,10 @@
   };
 
   # Console configuration
-  console = {
-    font = "Lat2-Terminus16";
-    useXkbConfig = true;
-  };
+  console = { font = "Lat2-Terminus16"; };
 
   # Timezone
   time.timeZone = lib.mkDefault "UTC";
 
-  # Keyboard layout
-  services.xserver.xkb = {
-    layout = lib.mkDefault "us";
-    variant = lib.mkDefault "";
-  };
 }
+
