@@ -19,7 +19,6 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 HOSTNAME=""
 DISK=""
 HOST_ID=""
-ZFS_PASSPHRASE=""
 LOCALE="en_US.UTF-8"
 KEYMAP="us"
 SPACE_BOOT="5G"
@@ -240,21 +239,6 @@ collect_user_input() {
     KEYMAP="$selected_keymap"
   fi
 
-  # ZFS encryption passphrase
-  echo ""
-  gum style --foreground="#0066cc" "🔐 ZFS Encryption"
-  ZFS_PASSPHRASE=$(gum input --password --placeholder="Enter ZFS encryption passphrase")
-  while [[ ${#ZFS_PASSPHRASE} -lt 8 ]]; do
-    gum style --foreground="#ff0000" "Passphrase must be at least 8 characters"
-    ZFS_PASSPHRASE=$(gum input --password --placeholder="Enter ZFS encryption passphrase")
-  done
-
-  local confirm_passphrase
-  confirm_passphrase=$(gum input --password --placeholder="Confirm ZFS encryption passphrase")
-  while [[ "$ZFS_PASSPHRASE" != "$confirm_passphrase" ]]; do
-    gum style --foreground="#ff0000" "Passphrases do not match"
-    confirm_passphrase=$(gum input --password --placeholder="Confirm ZFS encryption passphrase")
-  done
 }
 
 # Show configuration summary
@@ -329,13 +313,6 @@ generate_host_config() {
 
   networking.hostName = hostname;
   system.stateVersion = "24.05";
-  
-  # Enable ZFS support
-  nixmywindows.zfs = {
-    enable = true;
-    encryption = true;
-    autoSnapshot = true;
-  };
   
   # Boot configuration for ZFS - will be overridden by hardware.nix
   
@@ -417,8 +394,7 @@ format_disk() {
   # Run disko
   gum style --foreground="#ffaa00" "Running disko (this may take a few minutes)..."
 
-  # Set up ZFS passphrase for disko
-  export DISK_ENCRYPTION_PASSPHRASE="$ZFS_PASSPHRASE"
+  # ZFS encryption will prompt for passphrase during disko
 
   if ! disko --mode disko "$disko_config"; then
     gum style --foreground="#ff0000" "❌ Disk formatting failed!"

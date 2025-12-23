@@ -22,30 +22,6 @@
   };
 
   # Enable home-manager for admin user
-  home-manager.users.admin = { pkgs, ... }: {
-    # Admin-specific packages
-    home.packages = with pkgs; [ ];
-
-    # Shell configuration
-    programs = {
-      # Fish configuration for admin
-      fish = {
-        enable = true;
-        plugins = [{
-          name = "fzf-fish";
-          src = pkgs.fetchFromGitHub {
-            owner = "PatrickF1";
-            repo = "fzf.fish";
-            rev = "8920367cf85eee5218cc25a11e209d46e2591e7a";
-            sha256 = "sha256-T8KYLA/r/gOKvAivKRoeqIwE2pINlxFQtZJHpOy9GMM=";
-          };
-        }];
-      };
-
-    };
-
-    # Home Manager state version
-    home.stateVersion = "24.05";
-  };
+  home-manager.users.admin = { pkgs, ... }: { };
 }
 
