@@ -52,9 +52,8 @@ repos:
 
   # HTML validation
   - repo: https://github.com/Riverside-Healthcare/djLint
-    rev: v1.34.0
+    rev: v1.36.4
     hooks:
-      - id: djlint-reformat-html
       - id: djlint-html
 
   # CSS formatting

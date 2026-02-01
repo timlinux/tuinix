@@ -4,15 +4,6 @@
 
 set -euo pipefail
 
-# Colors and styling
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m'
-
 # Global variables
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -24,7 +15,6 @@ KEYMAP="us"
 SPACE_BOOT="5G"
 SPACE_NIX="250G"
 SPACE_HOME=""
-SPACE_VAR=""
 SPACE_ATUIN="50G"
 ZFS_POOL_NAME="NIXROOT"
 

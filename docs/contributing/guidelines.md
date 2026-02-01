@@ -14,7 +14,11 @@ We welcome contributions from everyone. This page covers the practical workflow 
 
 ## Reporting bugs
 
-Before reporting a bug, check the [issue tracker](https://github.com/timlinux/tuinix/issues) to see if it's already been reported. Use the [bug report template](https://github.com/timlinux/tuinix/issues/new?template=bug_report.yml) and include:
+Before reporting a bug, check the
+[issue tracker](https://github.com/timlinux/tuinix/issues)
+to see if it's already been reported. Use the
+[bug report template](https://github.com/timlinux/tuinix/issues/new?template=bug_report.yml)
+and include:
 
 - A clear and descriptive title
 - Steps to reproduce the issue
@@ -44,7 +48,7 @@ Use the [feature request template](https://github.com/timlinux/tuinix/issues/new
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 type(scope): description
 ```
 
@@ -52,7 +56,7 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
 
 Examples:
 
-```
+```text
 feat(zfs): add automatic snapshot scheduling
 fix(boot): resolve UEFI boot issues on certain hardware
 docs(readme): update installation instructions

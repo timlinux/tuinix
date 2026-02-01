@@ -13,7 +13,9 @@ After installation and reboot:
 
 ## Your environment
 
-tuinix is a terminal-only system. There is no desktop environment, no window manager, and no graphical login screen. Everything is done from the command line.
+tuinix is a terminal-only system. There is no desktop environment,
+no window manager, and no graphical login screen. Everything is
+done from the command line.
 
 Your system includes:
 

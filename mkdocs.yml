@@ -3,11 +3,13 @@ site_description: A Pure Terminal Based Linux Experience
 site_url: https://timlinux.github.io/tuinix
 repo_url: https://github.com/timlinux/tuinix
 repo_name: timlinux/tuinix
+edit_uri: edit/main/docs/
 
 theme:
   name: material
   logo: assets/logo.png
   favicon: assets/logo.png
+  custom_dir: docs/overrides
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -30,40 +32,77 @@ theme:
     - navigation.sections
     - navigation.expand
     - navigation.top
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.indexes
+    - navigation.footer
     - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
     - search.highlight
+    - search.suggest
+    - toc.follow
   icon:
     repo: fontawesome/brands/github
 
 extra_css:
   - assets/extra.css
 
+plugins:
+  - search
+  - macros
+
+extra:
+  iso:
+    version: "v0.1.0"
+    filename: "nixos-minimal-26.05.20251205.f61125a-x86_64-linux.iso"
+    download_url: "https://github.com/timlinux/tuinix/releases/download/v0.1.0/nixos-minimal-26.05.20251205.f61125a-x86_64-linux.iso"
+    releases_url: "https://github.com/timlinux/tuinix/releases/latest"
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/timlinux/tuinix
+
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
   - tables
   - attr_list
   - md_in_html
+  - def_list
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - toc:
+      permalink: true
 
 nav:
   - Home: index.md
-  - Installation:
+  - Install:
       - Overview: installation/index.md
       - Bare Metal: installation/bare-metal.md
       - Virtual Machine: installation/vm.md
   - Usage:
-      - Post-Install Guide: usage/post-install.md
+      - First Boot: usage/post-install.md
       - ZFS Management: usage/zfs.md
   - Contributing:
       - Development Guide: contributing/development.md
-      - Contributing Guidelines: contributing/guidelines.md
-      - AI/LLM Tool Policy: contributing/ai-policy.md
+      - Guidelines: contributing/guidelines.md
+      - AI/LLM Policy: contributing/ai-policy.md
   - About:
       - Requirements: about/requirements.md
-      - Brand Guidelines: about/brand.md
+      - Brand: about/brand.md

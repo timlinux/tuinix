@@ -12,11 +12,15 @@ This guide covers installing tuinix inside a virtual machine for testing, develo
 | Firmware | UEFI (no Secure Boot) | UEFI (no Secure Boot) |
 
 !!! warning "UEFI required"
-    Legacy BIOS (SeaBIOS) will **not** work. tuinix uses GPT partitioning with an EFI System Partition that requires UEFI firmware. ZFS kernel modules are unsigned, so **Secure Boot must be disabled**.
+    Legacy BIOS (SeaBIOS) will **not** work. tuinix uses GPT
+    partitioning with an EFI System Partition that requires UEFI
+    firmware. ZFS kernel modules are unsigned, so
+    **Secure Boot must be disabled**.
 
 ## Option A: Using the included run-vm.sh script (QEMU)
 
-The repo ships a helper script that handles UEFI firmware, disk serial numbers, and resource allocation automatically:
+The repo ships a helper script that handles UEFI firmware, disk
+serial numbers, and resource allocation automatically:
 
 ```bash
 # 1. Build the ISO (if you haven't already)
@@ -59,7 +63,10 @@ Or set the XML directly (`virsh edit <vmname>`):
 
 ### 2. Disk serial number (critical for ZFS)
 
-ZFS pool import scans `/dev/disk/by-id/`. Virtio disks in QEMU **do not create `/dev/disk/by-id/` entries** unless a serial number is configured. Without this, `zpool import` fails with `no such pool available`.
+ZFS pool import scans `/dev/disk/by-id/`. Virtio disks in QEMU
+**do not create `/dev/disk/by-id/` entries** unless a serial
+number is configured. Without this, `zpool import` fails with
+`no such pool available`.
 
 virt-manager has no GUI for this. Edit the VM XML directly:
 
@@ -76,7 +83,10 @@ This creates `/dev/disk/by-id/virtio-tuinix-root` inside the VM.
 
 ### 3. Virtio kernel modules in initrd
 
-The initrd needs `virtio_blk`, `virtio_pci`, and `virtio_scsi` to see the disk during early boot. These are already configured in the tuinix flake. If you create a custom host configuration, ensure they're in `boot.initrd.availableKernelModules`.
+The initrd needs `virtio_blk`, `virtio_pci`, and `virtio_scsi`
+to see the disk during early boot. These are already configured
+in the tuinix flake. If you create a custom host configuration,
+ensure they're in `boot.initrd.availableKernelModules`.
 
 ## Option C: Using VirtualBox
 

@@ -1,69 +1,198 @@
-/* tuinix brand colors */
+/* ==========================================================================
+   tuinix brand theme
+   ========================================================================== */
+
+/* ---------- Light mode ---------- */
 :root {
-  /* Primary palette */
-  --md-primary-fg-color: #654321;        /* Deep Earth */
-  --md-primary-fg-color--light: #8B4513; /* Warm Brown */
-  --md-primary-fg-color--dark: #3E2713;  /* Darker earth */
-  --md-primary-bg-color: #F5F5DC;        /* Soft Cream */
+  --md-primary-fg-color: #654321;
+  --md-primary-fg-color--light: #8B4513;
+  --md-primary-fg-color--dark: #3E2713;
+  --md-primary-bg-color: #F5F5DC;
   --md-primary-bg-color--light: #FAFAF0;
 
-  /* Accent */
-  --md-accent-fg-color: #E95420;         /* Ubuntu Orange */
+  --md-accent-fg-color: #E95420;
   --md-accent-fg-color--transparent: rgba(233, 84, 32, 0.1);
   --md-accent-bg-color: #E95420;
   --md-accent-bg-color--light: rgba(233, 84, 32, 0.1);
 }
 
-/* Dark mode overrides */
+/* ---------- Dark mode ---------- */
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color: #E95420;        /* Ubuntu Orange */
+  --md-primary-fg-color: #E95420;
   --md-primary-fg-color--light: #F07040;
   --md-primary-fg-color--dark: #C44418;
-  --md-primary-bg-color: #1E1E1E;        /* Terminal Black */
+  --md-primary-bg-color: #1E1E1E;
   --md-primary-bg-color--light: #2A2A2A;
 
-  --md-accent-fg-color: #87A96B;         /* Sage Green */
+  --md-accent-fg-color: #87A96B;
   --md-accent-bg-color: #87A96B;
 
-  --md-default-bg-color: #1E1E1E;
-  --md-default-bg-color--light: #262626;
-  --md-default-bg-color--lighter: #303030;
-  --md-default-bg-color--lightest: #3A3A3A;
+  --md-default-bg-color: #1a1a2e;
+  --md-default-bg-color--light: #1f1f35;
+  --md-default-bg-color--lighter: #25253d;
+  --md-default-bg-color--lightest: #2d2d48;
+
+  --md-code-bg-color: #0d0d1a;
 }
 
-/* Code blocks - terminal aesthetic */
+/* ---------- Typography ---------- */
 .md-typeset code {
-  font-family: "Ubuntu Mono", monospace;
+  font-family: "Ubuntu Mono", "Cascadia Code", monospace;
 }
-
 .md-typeset pre > code {
   font-size: 0.85rem;
 }
 
-/* Admonition custom colors */
+/* ---------- Hero section on homepage ---------- */
+.tx-hero {
+  margin: 0 -0.8rem;
+  padding: 4rem 1rem 3rem;
+  background: linear-gradient(135deg, #654321 0%, #3E2713 50%, #1a1a2e 100%);
+  color: #F5F5DC;
+  text-align: center;
+}
+.tx-hero__logo {
+  margin: 0 auto 1rem;
+  display: flex;
+  justify-content: center;
+}
+.tx-hero__logo img {
+  border-radius: 50%;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+[data-md-color-scheme="slate"] .tx-hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #0d0d1a 50%, #2d1810 100%);
+}
+.tx-hero h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #F5F5DC;
+}
+.tx-hero .tx-hero__tagline {
+  font-size: 1.3rem;
+  opacity: 0.9;
+  margin-bottom: 2rem;
+  font-weight: 300;
+}
+.tx-hero .md-button {
+  margin: 0.4rem;
+  border-radius: 2rem;
+  padding: 0.6rem 2rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.tx-hero .md-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+.tx-hero .md-button--primary {
+  background-color: #E95420;
+  border-color: #E95420;
+  color: #fff;
+}
+.tx-hero .md-button--primary:hover {
+  background-color: #F07040;
+  border-color: #F07040;
+}
+
+/* ---------- Feature cards ---------- */
+.tx-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+.tx-feature {
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color--light);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.tx-feature:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+[data-md-color-scheme="slate"] .tx-feature:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+.tx-feature h3 {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.tx-feature .twemoji {
+  font-size: 1.5rem;
+}
+
+/* ---------- Admonitions ---------- */
 .md-typeset .admonition.tip,
 .md-typeset details.tip {
   border-color: #87A96B;
 }
-
 .md-typeset .tip > .admonition-title,
 .md-typeset .tip > summary {
   background-color: rgba(135, 169, 107, 0.1);
   border-color: #87A96B;
 }
-
 .md-typeset .admonition.warning,
 .md-typeset details.warning {
   border-color: #E95420;
 }
-
 .md-typeset .warning > .admonition-title,
 .md-typeset .warning > summary {
   background-color: rgba(233, 84, 32, 0.1);
   border-color: #E95420;
 }
 
-/* Header logo sizing */
+/* ---------- Tabs ---------- */
+.md-typeset .tabbed-labels > label {
+  font-weight: 600;
+}
+
+/* ---------- Header / logo ---------- */
 .md-header__button.md-logo img {
   height: 1.5rem;
+}
+.md-header {
+  background: linear-gradient(90deg, var(--md-primary-fg-color--dark), var(--md-primary-fg-color));
+}
+
+/* ---------- Navigation tabs ---------- */
+.md-tabs {
+  background: var(--md-primary-fg-color--dark);
+}
+
+/* ---------- Footer ---------- */
+.md-footer {
+  background: var(--md-primary-fg-color--dark);
+}
+
+/* ---------- Smooth transitions ---------- */
+.md-nav__link,
+.md-typeset a {
+  transition: color 0.15s;
+}
+
+/* ---------- Code block styling ---------- */
+.md-typeset pre {
+  border-radius: 0.5rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+}
+[data-md-color-scheme="slate"] .md-typeset pre {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ---------- Responsive hero ---------- */
+@media screen and (max-width: 76.25em) {
+  .tx-hero h1 {
+    font-size: 2.2rem;
+  }
+  .tx-hero .tx-hero__tagline {
+    font-size: 1.1rem;
+  }
 }

@@ -7,7 +7,6 @@ VERSION="${TUINIX_VERSION:-$(git describe --tags --always --dirty 2>/dev/null ||
 
 # Generate timestamp
 TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
-BUILD_DATE=$(date -u '+%Y%m%d-%H%M%S')
 
 # Git commit info if available
 if git rev-parse --git-dir >/dev/null 2>&1; then

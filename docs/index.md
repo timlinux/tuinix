@@ -1,53 +1,140 @@
+---
+hide:
+  - navigation
+  - toc
+---
+
+<div class="tx-hero" markdown>
+
+<figure class="tx-hero__logo" markdown>
+![tuinix logo](assets/logo.png){ width="180" }
+</figure>
+
 # tuinix
 
-**A Pure Terminal Based Linux Experience**
+<p class="tx-hero__tagline">A Pure Terminal Based Linux Experience</p>
 
-tuinix is a terminal-centric Linux distribution built on NixOS with ZFS encryption. No desktop environment, no window manager -- just a carefully curated set of terminal tools on a reproducible, declarative foundation.
+No desktop environment. No window manager. Just a carefully curated terminal on a
+reproducible, declarative NixOS foundation with ZFS encryption.
 
-!!! tip "Ready to install?"
-    Jump straight to the [Installation Guide](installation/index.md) to get started.
+[Download & Install](installation/bare-metal.md){ .md-button .md-button--primary }
+[Try in a VM](installation/vm.md){ .md-button }
 
-## Three Environments
+</div>
 
-tuinix has three distinct contexts. Pick the one that matches where you are right now.
+## Install on Your Machine
 
-### 1. Development Environment
+Most users want to grab the ISO and install tuinix on real hardware.
+An internet connection is required during installation.
 
-*You're a contributor working on the tuinix flake, building ISOs, or hacking on modules.*
+<div class="tx-features" markdown>
 
-This is where the NixOS configuration, installer scripts, and ISO builder live. You work here on your existing machine (NixOS or any system with Nix installed) to build, test, and iterate.
+<div class="tx-feature" markdown>
+
+### :material-download: 1. Get the ISO
+
+Download [{{ iso.filename }}]({{ iso.download_url }}) ({{ iso.version }}) or build it yourself from source.
 
 ```bash
+# Or build from source
 git clone https://github.com/timlinux/tuinix.git
-cd tuinix
-./scripts/build-iso.sh          # Build the ISO
-./scripts/run-vm.sh iso         # Test in a VM
-nix flake check                 # Validate the flake
+cd tuinix && ./scripts/build-iso.sh
 ```
 
-Full details: [Development Guide](contributing/development.md)
+</div>
 
-### 2. Installation Environment
+<div class="tx-feature" markdown>
 
-*You have the ISO and want to install tuinix on a machine.*
+### :material-usb-flash-drive: 2. Flash & Boot
 
-The ISO is self-contained -- it includes both the installer and the complete system configuration. No internet connection is required.
+Write the ISO to a USB drive and boot from it.
+UEFI is required -- disable Secure Boot.
 
-- **[Bare Metal](installation/bare-metal.md)** -- Install on a physical machine from USB
-- **[Virtual Machine](installation/vm.md)** -- Test in QEMU, virt-manager, or VirtualBox
+```bash
+sudo dd if={{ iso.filename }} of=/dev/sdX bs=4M status=progress
+```
 
-### 3. Post-Install Environment
+</div>
 
-*You've installed tuinix and are booting into it for the first time.*
+<div class="tx-feature" markdown>
 
-After installation you'll have a pure terminal environment with ZFS-encrypted storage, pre-configured tools, and your tuinix flake at `~/tuinix` for further customization.
+### :material-wizard-hat: 3. Run the Installer
 
-Full details: [Post-Install Guide](usage/post-install.md)
+The interactive installer walks you through disk selection,
+ZFS encryption passphrase, locale, and hostname.
 
-## Features
+```bash
+sudo scripts/install.sh
+```
 
-- **NixOS + Flakes** -- Fully reproducible, declarative system configuration with instant rollbacks
-- **ZFS with encryption** -- Advanced filesystem with compression, checksums, and snapshots
-- **Terminal only** -- No X11, no Wayland. Minimal resource usage, maximum productivity
-- **Self-contained ISO** -- Offline installation from a single bootable image
-- **Interactive installer** -- Guided setup with disk selection, encryption, and locale configuration
+</div>
+
+</div>
+
+[Full Bare Metal Guide :material-arrow-right:](installation/bare-metal.md){ .md-button .md-button--primary }
+[Test in a Virtual Machine :material-arrow-right:](installation/vm.md){ .md-button }
+
+---
+
+## What You Get
+
+<div class="tx-features" markdown>
+
+<div class="tx-feature" markdown>
+
+### :material-snowflake: NixOS + Flakes
+
+Fully reproducible, declarative system configuration.
+Roll back to any previous generation instantly.
+
+</div>
+
+<div class="tx-feature" markdown>
+
+### :material-shield-lock: ZFS Encryption
+
+Native ZFS encryption with compression, checksums,
+snapshots, and self-healing data integrity.
+
+</div>
+
+<div class="tx-feature" markdown>
+
+### :material-console: Terminal Only
+
+No X11. No Wayland. Minimal resource usage,
+maximum productivity. Every byte serves a purpose.
+
+</div>
+
+<div class="tx-feature" markdown>
+
+### :material-arrow-u-left-top: Instant Rollbacks
+
+Every system change creates a new generation.
+Boot into any previous state from GRUB.
+
+</div>
+
+</div>
+
+---
+
+## After Installation
+
+Once installed, your system boots to a pure terminal with ZFS-encrypted storage
+and your tuinix flake at `~/tuinix` for customization.
+
+- [Post-Install Guide](usage/post-install.md) -- First boot, networking, updates
+- [ZFS Management](usage/zfs.md) -- Snapshots, scrubs, recovery
+
+---
+
+## Contributing
+
+Want to hack on tuinix itself? The development environment runs on any machine
+with Nix installed.
+
+- [Development Guide](contributing/development.md) -- Build, test, iterate
+- [Contributing Guidelines](contributing/guidelines.md) -- Workflow and standards
+- [AI/LLM Tool Policy](contributing/ai-policy.md) -- Rules for AI-assisted contributions

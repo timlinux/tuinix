@@ -12,11 +12,15 @@ This guide covers installing tuinix on a real physical machine.
 | Boot mode | UEFI | UEFI |
 
 !!! warning "UEFI and Secure Boot"
-    tuinix requires UEFI boot. Legacy BIOS is not supported. Secure Boot must be disabled because ZFS kernel modules are unsigned.
+    tuinix requires UEFI boot. Legacy BIOS is not supported.
+    Secure Boot must be disabled because ZFS kernel modules
+    are unsigned.
 
 ## Step 1: Get the ISO
 
-Download the latest ISO from the [releases page](https://github.com/timlinux/tuinix/releases), or build it yourself:
+Download the latest ISO from the
+[releases page]({{ iso.releases_url }}) ({{ iso.version }}),
+or build it yourself:
 
 ```bash
 git clone https://github.com/timlinux/tuinix.git
@@ -24,7 +28,8 @@ cd tuinix
 ./scripts/build-iso.sh
 ```
 
-The ISO is self-contained -- it includes the installer and the full system configuration. No internet connection is required during installation.
+The ISO includes the installer and system configuration. An internet
+connection is required during installation to fetch packages.
 
 ## Step 2: Flash the ISO to a USB drive
 
@@ -34,7 +39,7 @@ You need a USB drive of at least 4 GB. **All data on the drive will be destroyed
 
     ```bash
     # Identify your USB device (check with lsblk first!)
-    sudo dd if=tuinix.v1.iso of=/dev/sdX bs=4M status=progress oflag=sync
+    sudo dd if={{ iso.filename }} of=/dev/sdX bs=4M status=progress oflag=sync
     ```
 
     Replace `/dev/sdX` with your actual USB device (e.g. `/dev/sdb`). **Triple-check** you have the right device -- `dd` will happily overwrite your main disk.
@@ -44,7 +49,7 @@ You need a USB drive of at least 4 GB. **All data on the drive will be destroyed
     ```bash
     # Find the disk number with diskutil list
     diskutil unmountDisk /dev/diskX
-    sudo dd if=tuinix.v1.iso of=/dev/rdiskX bs=4m
+    sudo dd if={{ iso.filename }} of=/dev/rdiskX bs=4m
     diskutil eject /dev/diskX
     ```
 

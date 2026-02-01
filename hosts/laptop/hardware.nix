@@ -4,8 +4,16 @@
 {
   imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
 
-  # Disk configuration handled by disks.nix
-  # No filesystem definitions here - let disks.nix handle ZFS layout
+  # Minimal filesystem declarations for nix flake check.
+  # On a real install, disko generates the actual ZFS layout.
+  fileSystems."/" = {
+    device = "NIXROOT/root";
+    fsType = "zfs";
+  };
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-label/BOOT";
+    fsType = "vfat";
+  };
 
   # Next line for AMD GPU, change if you have Intel or Nvidia
   # To load the module early in the boot process so that

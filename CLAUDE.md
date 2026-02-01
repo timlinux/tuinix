@@ -1,0 +1,1 @@
+- always update the mkdocs as we make improvements, add features etc so the user has current documentation

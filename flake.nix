@@ -73,7 +73,7 @@
         gum
 
         # Documentation tools
-        mdbook
+        (python3.withPackages (ps: with ps; [ mkdocs-material mkdocs-macros ]))
         markdownlint-cli
 
         # Security tools
@@ -99,6 +99,11 @@
           echo "  nix build .#nixosConfigurations.<hostname>.config.system.build.isoImage"
           echo "  nixos-rebuild switch --flake .#<hostname>"
           echo ""
+          echo "Documentation:"
+          echo "  nix run .#docs-serve  - Serve docs locally at http://127.0.0.1:8000"
+          echo "  nix run .#docs-build  - Build docs to site/ directory"
+          echo "  nix run .#docs-deploy - Deploy docs to GitHub Pages"
+          echo ""
           echo "Development tools available:"
           echo "  • nixfmt-classic - Format Nix code"
           echo "  • statix - Static analysis for Nix"
@@ -118,6 +123,35 @@
 
       # Formatter
       formatter = pkgs.nixfmt-classic;
+
+      # Documentation apps
+      apps.docs-serve = let
+        mkdocsEnv = pkgs.python3.withPackages (ps: with ps; [ mkdocs-material mkdocs-macros ]);
+      in {
+        type = "app";
+        program = toString (pkgs.writeShellScript "docs-serve" ''
+          export PATH="${mkdocsEnv}/bin:$PATH"
+          mkdocs serve
+        '');
+      };
+      apps.docs-build = let
+        mkdocsEnv = pkgs.python3.withPackages (ps: with ps; [ mkdocs-material mkdocs-macros ]);
+      in {
+        type = "app";
+        program = toString (pkgs.writeShellScript "docs-build" ''
+          export PATH="${mkdocsEnv}/bin:$PATH"
+          mkdocs build
+        '');
+      };
+      apps.docs-deploy = {
+        type = "app";
+        program = toString (pkgs.writeShellScript "docs-deploy" ''
+          export PATH="${pkgs.gh}/bin:$PATH"
+          echo "Triggering Documentation workflow on GitHub Actions..."
+          gh workflow run docs.yml
+          echo "Workflow dispatched. Monitor at: https://github.com/timlinux/tuinix/actions/workflows/docs.yml"
+        '');
+      };
 
       # Packages
       packages =

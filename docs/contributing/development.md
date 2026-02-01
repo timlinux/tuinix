@@ -1,10 +1,14 @@
 # Development Guide
 
-This guide is for contributors and developers working on the tuinix flake itself -- the "external" environment where the system configuration, installer, and ISO are built and maintained.
+This guide is for contributors and developers working on the
+tuinix flake itself -- the "external" environment where the system
+configuration, installer, and ISO are built and maintained.
 
 ## Prerequisites
 
-You need a working Nix installation with flakes enabled. tuinix is developed on NixOS but the flake can be built from any system with Nix.
+You need a working Nix installation with flakes enabled. tuinix is
+developed on NixOS but the flake can be built from any system
+with Nix.
 
 ## Getting started
 
@@ -52,7 +56,7 @@ nix build .#nixosConfigurations.tuinix.config.system.build.toplevel
 
 ## Repository structure
 
-```
+```text
 tuinix/
 ├── flake.nix           # Main flake -- entry point for everything
 ├── installer.nix       # ISO/installer configuration

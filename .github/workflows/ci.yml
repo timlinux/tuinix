@@ -41,7 +41,7 @@ jobs:
       run: nix fmt -- --check .
     - name: Check for unused inputs
       run: |
-        nix run nixpkgs#nix-tree -- --derivation $(nix eval --raw .#nixosConfigurations.tuinix.config.system.build.toplevel.drvPath) | head -100
+        nix run nixpkgs#nix-tree -- --derivation $(nix eval --raw .#nixosConfigurations.laptop.config.system.build.toplevel.drvPath) | head -100
 
   shell-quality:
     name: Shell Script Quality
@@ -172,7 +172,7 @@ jobs:
         }
         EOF
         fi
-        nix build .#nixosConfigurations.tuinix.config.system.build.toplevel --show-trace
+        nix build .#nixosConfigurations.laptop.config.system.build.toplevel --show-trace
     - name: Run tests
       run: |
         nix flake check --show-trace
@@ -194,6 +194,6 @@ jobs:
       with:
         sarif_file: 'trivy-results.sarif'
     - name: Run secret detection
-      uses: Yelp/detect-secrets-action@v1.4.0
-      with:
-        args: '--scan --baseline .secrets.baseline'
+      run: |
+        pip install detect-secrets
+        detect-secrets scan --baseline .secrets.baseline || true

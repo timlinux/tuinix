@@ -736,3 +736,9 @@ Make it so when the user boots the live CD they land in /home/tuinix (symlinked 
   - Builds MkDocs site and deploys to GitHub Pages
 - Updated README.md links to point to docs site URLs
 - Updated AI_POLICY.md violation link to docs site
+PROMPT: please look at https://timlinux.github.io/tuinix/ the mkdocs being generated is a hot mess - add some tooling (i.e. nix flake commands to build the docs locally here so I can see how they are coming out)
+PROMPT: the installation will require internet
+PROMPT: logo needs to be shown nice and large in the hero
+PROMPT: nice. the references to the iso in the docs need to be consistent with the iso in the current release and you need to add a mechanism in the release process to update these so they match
+PROMPT: occasionally (e.g. now) I will want to push updates to the github pages. Can you add support for doing that and then commit, push and publish the updates you have made
+PROMPT: well we cant have both the action deployment and the gh-pages branch so that is not going to work

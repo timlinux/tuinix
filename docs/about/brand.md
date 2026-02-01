@@ -1,6 +1,8 @@
 # Brand Guidelines
 
-**tuinix** represents technical excellence and terminal-first computing. Our brand embodies warmth, community, and the power of thoughtful minimalism.
+**tuinix** represents technical excellence and terminal-first
+computing. Our brand embodies warmth, community, and the power
+of thoughtful minimalism.
 
 ## Color Palette
 

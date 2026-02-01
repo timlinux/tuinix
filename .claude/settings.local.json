@@ -10,7 +10,8 @@
       "Bash(gh repo rename:*)",
       "Bash(git remote set-url:*)",
       "Bash(sed:*)",
-      "Bash(/home/timlinux/dev/nix/nixtui/PROMPT.log)"
+      "Bash(/home/timlinux/dev/nix/nixtui/PROMPT.log)",
+      "Bash(/home/timlinux/dev/nix/tuinix/PROMPT.log)"
     ],
     "deny": [],
     "ask": []
