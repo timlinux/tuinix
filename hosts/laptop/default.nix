@@ -9,4 +9,3 @@
   networking.hostId = "a1b2c3d4";
   system.stateVersion = "25.11";
 }
-

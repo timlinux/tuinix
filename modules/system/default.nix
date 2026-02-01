@@ -4,4 +4,3 @@
 {
   imports = [ ./boot.nix ./nix-settings.nix ./zfs.nix ];
 }
-

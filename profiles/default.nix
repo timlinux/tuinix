@@ -2,7 +2,5 @@
 { lib, ... }:
 
 {
-  imports = [
-    ./workstation
-  ];
+  imports = [ ./workstation ];
 }

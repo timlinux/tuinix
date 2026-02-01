@@ -7,9 +7,18 @@
   },
   "MD033": {
     "allowed_elements": [
-      "br", "details", "summary", "img",
-      "div", "figure", "figcaption", "p", "span",
-      "a", "sup", "sub"
+      "br",
+      "details",
+      "summary",
+      "img",
+      "div",
+      "figure",
+      "figcaption",
+      "p",
+      "span",
+      "a",
+      "sup",
+      "sub"
     ]
   },
   "MD031": false,

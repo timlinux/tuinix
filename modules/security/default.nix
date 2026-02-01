@@ -2,9 +2,5 @@
 { lib, ... }:
 
 {
-  imports = [
-    ./firewall.nix
-    ./ssh.nix
-    ./sudo.nix
-  ];
+  imports = [ ./firewall.nix ./ssh.nix ./sudo.nix ];
 }

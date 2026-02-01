@@ -46,4 +46,3 @@
   # Power management
   powerManagement.cpuFreqGovernor = lib.mkDefault "powersave";
 }
-

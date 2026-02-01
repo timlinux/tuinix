@@ -14,15 +14,11 @@ with lib;
       enable = true;
       userControlled.enable = true;
     };
-    
+
     # Alternative: NetworkManager (comment out wireless above if using this)
     # networking.networkmanager.enable = true;
-    
+
     # Wireless tools
-    environment.systemPackages = with pkgs; [
-      wpa_supplicant
-      wirelesstools
-      iw
-    ];
+    environment.systemPackages = with pkgs; [ wpa_supplicant wirelesstools iw ];
   };
 }

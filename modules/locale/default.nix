@@ -2,9 +2,5 @@
 { lib, ... }:
 
 {
-  imports = [ 
-    ./en_US.nix 
-    ./pt_PT.nix
-  ];
+  imports = [ ./en_US.nix ./pt_PT.nix ];
 }
-

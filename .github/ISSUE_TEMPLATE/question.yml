@@ -8,12 +8,12 @@ body:
     attributes:
       value: |
         Thanks for your question! We're here to help. 💡
-        
+
         Before submitting, please check:
         - The documentation in the repository
         - Existing issues and discussions
         - The NixOS manual and wiki
-        
+
   - type: textarea
     id: question
     attributes:
@@ -22,7 +22,7 @@ body:
       placeholder: How do I...?
     validations:
       required: true
-      
+
   - type: dropdown
     id: category
     attributes:
@@ -40,7 +40,7 @@ body:
         - Other
     validations:
       required: true
-      
+
   - type: textarea
     id: context
     attributes:
@@ -55,7 +55,7 @@ body:
       placeholder: I'm trying to... and I've already tried...
     validations:
       required: false
-      
+
   - type: textarea
     id: environment
     attributes:
@@ -67,7 +67,7 @@ body:
         - Nix version: [if known]
     validations:
       required: false
-      
+
   - type: checkboxes
     id: terms
     attributes:

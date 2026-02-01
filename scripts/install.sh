@@ -113,7 +113,7 @@ interpolate_template() {
 get_available_disks() {
   # Get list of disks, excluding loop devices and small disks
   lsblk -d -n -o NAME,SIZE,TYPE,MODEL |
-    awk '$3 == "disk" && $2 !~ /^[0-9]+[MK]$/ {print "/dev/" $1 " (" $2 " - " $4 ")"}'
+  awk '$3 == "disk" && $2 !~ /^[0-9]+[MK]$/ {print "/dev/" $1 " (" $2 " - " $4 ")"}'
 }
 
 # Collect all user input upfront
@@ -309,7 +309,7 @@ generate_host_config() {
 
   # Locale configuration
   i18n.defaultLocale = "$LOCALE";
-  
+
   # Keyboard configuration
   services.xserver.xkb.layout = "$KEYMAP";
   console.keyMap = "$KEYMAP";
@@ -338,10 +338,10 @@ EOF
   # Hardware configuration will be updated by nixos-generate-config
   boot = {
     initrd = {
-      availableKernelModules = [ 
-        "ahci" "xhci_pci" "virtio_pci" "virtio_scsi" 
-        "sd_mod" "sr_mod" "nvme" "ehci_pci" "usbhid" 
-        "usb_storage" "sdhci_pci" 
+      availableKernelModules = [
+        "ahci" "xhci_pci" "virtio_pci" "virtio_scsi"
+        "sd_mod" "sr_mod" "nvme" "ehci_pci" "usbhid"
+        "usb_storage" "sdhci_pci"
       ];
       kernelModules = [ ];
     };

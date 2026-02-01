@@ -52,7 +52,7 @@ gum() {
       "input")
         shift
         while [[ "$1" == --* ]]; do
-          shift 2 2>/dev/null || shift 1  
+          shift 2 2>/dev/null || shift 1
         done
         echo "${1:-$DEFAULT_MEMORY}"  # Return value or default
         ;;
@@ -80,21 +80,21 @@ load_config() {
 # Clean function to remove disk and config
 clean_vm() {
   echo "🧹 Cleaning VM data..."
-  
+
   if [ -f "$DISK_FILE" ]; then
     if gum confirm "Remove disk image '$DISK_FILE'?"; then
       rm -f "$DISK_FILE"
       echo "✓ Removed disk image"
     fi
   fi
-  
+
   if [ -d "$CONFIG_DIR" ]; then
     if gum confirm "Remove configuration cache (includes UEFI variables)?"; then
       rm -rf "$CONFIG_DIR"
       echo "✓ Removed configuration cache and UEFI variables"
     fi
   fi
-  
+
   echo "VM cleanup complete"
   exit 0
 }
@@ -102,32 +102,32 @@ clean_vm() {
 # Inspect disk contents to debug boot issues
 inspect_disk() {
   echo "🔍 Inspecting disk contents..."
-  
+
   # Create temporary mount point
   local mount_point="/tmp/tuinix-inspect"
   sudo mkdir -p "$mount_point"
-  
+
   # Try to mount the disk as a loop device
   echo "Attempting to analyze disk partitions..."
-  
+
   # Use qemu-nbd to expose the qcow2 as a block device
   if command -v qemu-nbd >/dev/null 2>&1; then
     echo "Using qemu-nbd to inspect disk..."
-    
+
     # Load nbd module if not loaded
     sudo modprobe nbd 2>/dev/null || true
-    
+
     # Connect the qcow2 image
     sudo qemu-nbd -c /dev/nbd0 "$DISK_FILE"
-    
+
     # List partitions
     echo "Partitions found:"
     sudo fdisk -l /dev/nbd0 2>/dev/null || echo "No valid partition table found"
-    
+
     # Try to mount the root partition (usually nbd0p2 for EFI+ZFS setup)
     echo ""
     echo "Checking for boot files..."
-    
+
     # Check EFI partition (usually nbd0p1)
     if sudo mount /dev/nbd0p1 "$mount_point" 2>/dev/null; then
       echo "✓ EFI partition mounted:"
@@ -136,19 +136,19 @@ inspect_disk() {
     else
       echo "❌ Could not mount EFI partition"
     fi
-    
+
     # Disconnect
     sudo qemu-nbd -d /dev/nbd0
-    
+
     echo ""
     echo "If no boot files found, installation likely incomplete."
     echo "Suggestion: Boot from ISO and complete/redo installation."
-    
+
   else
     echo "qemu-nbd not available - cannot inspect disk contents"
     echo "Suggestion: Install qemu-utils or try reinstalling"
   fi
-  
+
   sudo rmdir "$mount_point" 2>/dev/null || true
 }
 
@@ -237,14 +237,14 @@ fi
 if [ $# -eq 0 ]; then
   echo "🖥️  TuiNix VM Launcher"
   echo ""
-  
+
   # Check if disk exists
   if [ -f "$DISK_FILE" ]; then
     echo "Found existing VM disk: $DISK_FILE"
   else
     echo "No VM disk found - will create new one"
   fi
-  
+
   echo ""
   BOOT_MODE=$(gum choose "harddrive" "iso" "clean" --header "How do you want to boot?")
 else
@@ -284,7 +284,7 @@ else
   echo "Using default configuration:"
   MEMORY="$DEFAULT_MEMORY"
   DISK_SIZE="$DEFAULT_DISK_SIZE"
-  echo "  Memory: $MEMORY" 
+  echo "  Memory: $MEMORY"
   echo "  Disk: $DISK_SIZE"
   save_config
 fi
@@ -343,104 +343,103 @@ BASE_QEMU_ARGS=$(get_base_qemu_args)
 
 # Launch VM based on boot mode
 case "$BOOT_MODE" in
-"iso")
-  echo ""
-  echo "🚀 Starting VM - booting from ISO"
-  echo ""
-  
-  qemu-system-x86_64 \
-    -enable-kvm \
-    -m "$MEMORY" \
-    $BASE_QEMU_ARGS \
-    -drive file="$DISK_FILE",format=qcow2,if=virtio,cache=writethrough,serial=tuinix-root \
-    -cdrom "$ISO_FILE" \
-    -boot order=dc,menu=on \
-    -name "TuiNix (ISO Boot)"
-  ;;
+  "iso")
+    echo ""
+    echo "🚀 Starting VM - booting from ISO"
+    echo ""
 
-"harddrive")
-  echo ""
-  echo "🚀 Starting VM - booting from hard drive"
-  echo ""
-  
-  # Check if disk exists and has reasonable size
-  if [ ! -f "$DISK_FILE" ]; then
-    echo "❌ No disk image found! Boot from ISO first to install."
+    qemu-system-x86_64 \
+      -enable-kvm \
+      -m "$MEMORY" \
+      $BASE_QEMU_ARGS \
+      -drive file="$DISK_FILE",format=qcow2,if=virtio,cache=writethrough,serial=tuinix-root \
+      -cdrom "$ISO_FILE" \
+      -boot order=dc,menu=on \
+      -name "TuiNix (ISO Boot)"
+    ;;
+
+  "harddrive")
+    echo ""
+    echo "🚀 Starting VM - booting from hard drive"
+    echo ""
+
+    # Check if disk exists and has reasonable size
+    if [ ! -f "$DISK_FILE" ]; then
+      echo "❌ No disk image found! Boot from ISO first to install."
+      exit 1
+    fi
+
+    # Show disk info for debugging
+    echo "Disk information:"
+    qemu-img info "$DISK_FILE" | head -8
+    echo ""
+
+    # Check if disk seems to have been properly installed
+    disk_size_used=$(qemu-img info "$DISK_FILE" | grep "disk size" | awk '{print $3}')
+    disk_size_num=$(echo "$disk_size_used" | sed 's/[^0-9.]//g')
+
+    # Convert to integer for comparison (3.3 -> 3, etc.)
+    disk_size_int=${disk_size_num%.*}
+
+    if [ "$disk_size_int" -lt 2 ]; then
+      echo ""
+      echo "⚠️  WARNING: Disk only uses ${disk_size_used} - installation appears incomplete!"
+      echo "   Even a minimal NixOS installation should use 2GB+"
+      echo ""
+      if gum confirm "The installation seems incomplete. Boot from ISO to reinstall instead?"; then
+        BOOT_MODE="iso"
+      else
+        echo "Proceeding with possibly incomplete installation..."
+      fi
+    else
+      echo "✓ Disk usage ${disk_size_used} looks reasonable for minimal install"
+    fi
+
+    # If we're still booting from hard drive after the check
+    if [ "$BOOT_MODE" = "harddrive" ]; then
+      # Use the same configuration as ISO boot but without the CD
+      # This ensures consistency between installation and running
+      echo "Booting from disk (same config as installation)..."
+
+      # Try offering boot menu first to see what's available
+      echo "Starting with boot menu - you may need to select boot device manually..."
+
+      # Try different boot approaches
+      if gum confirm "Try simple boot mode? (if advanced mode fails)"; then
+        echo "Using simple boot configuration..."
+        qemu-system-x86_64 \
+          -enable-kvm \
+          -m "$MEMORY" \
+          -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
+          -drive if=pflash,format=raw,file="$OVMF_VARS_FILE" \
+          -cpu host \
+          -smp 2 \
+          -drive file="$DISK_FILE",format=qcow2,if=virtio,serial=tuinix-root \
+          -netdev user,id=net0 \
+          -device e1000,netdev=net0 \
+          -display sdl \
+          -boot c \
+          -name "TuiNix (Simple)"
+      else
+        echo "Using advanced boot configuration..."
+        qemu-system-x86_64 \
+          -enable-kvm \
+          -m "$MEMORY" \
+          $BASE_QEMU_ARGS \
+          -drive file="$DISK_FILE",format=qcow2,if=virtio,cache=writethrough,serial=tuinix-root \
+          -boot order=c,menu=on \
+          -name "TuiNix" \
+          -serial stdio \
+          -no-reboot
+      fi
+    else
+      # Boot mode was changed to ISO during the check, fall through to ISO case
+      echo "Switching to ISO boot..."
+    fi
+    ;;
+
+  *)
+    echo "Error: Unknown boot mode '$BOOT_MODE'"
     exit 1
-  fi
-  
-  # Show disk info for debugging
-  echo "Disk information:"
-  qemu-img info "$DISK_FILE" | head -8
-  echo ""
-  
-  # Check if disk seems to have been properly installed
-  disk_size_used=$(qemu-img info "$DISK_FILE" | grep "disk size" | awk '{print $3}')
-  disk_size_num=$(echo "$disk_size_used" | sed 's/[^0-9.]//g')
-  
-  # Convert to integer for comparison (3.3 -> 3, etc.)
-  disk_size_int=${disk_size_num%.*}
-  
-  if [ "$disk_size_int" -lt 2 ]; then
-    echo ""
-    echo "⚠️  WARNING: Disk only uses ${disk_size_used} - installation appears incomplete!"
-    echo "   Even a minimal NixOS installation should use 2GB+"
-    echo ""
-    if gum confirm "The installation seems incomplete. Boot from ISO to reinstall instead?"; then
-      BOOT_MODE="iso"
-    else
-      echo "Proceeding with possibly incomplete installation..."
-    fi
-  else
-    echo "✓ Disk usage ${disk_size_used} looks reasonable for minimal install"
-  fi
-  
-  # If we're still booting from hard drive after the check
-  if [ "$BOOT_MODE" = "harddrive" ]; then
-    # Use the same configuration as ISO boot but without the CD
-    # This ensures consistency between installation and running
-    echo "Booting from disk (same config as installation)..."
-    
-    # Try offering boot menu first to see what's available
-    echo "Starting with boot menu - you may need to select boot device manually..."
-    
-    # Try different boot approaches
-    if gum confirm "Try simple boot mode? (if advanced mode fails)"; then
-      echo "Using simple boot configuration..."
-      qemu-system-x86_64 \
-        -enable-kvm \
-        -m "$MEMORY" \
-        -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
-        -drive if=pflash,format=raw,file="$OVMF_VARS_FILE" \
-        -cpu host \
-        -smp 2 \
-        -drive file="$DISK_FILE",format=qcow2,if=virtio,serial=tuinix-root \
-        -netdev user,id=net0 \
-        -device e1000,netdev=net0 \
-        -display sdl \
-        -boot c \
-        -name "TuiNix (Simple)"
-    else
-      echo "Using advanced boot configuration..."
-      qemu-system-x86_64 \
-        -enable-kvm \
-        -m "$MEMORY" \
-        $BASE_QEMU_ARGS \
-        -drive file="$DISK_FILE",format=qcow2,if=virtio,cache=writethrough,serial=tuinix-root \
-        -boot order=c,menu=on \
-        -name "TuiNix" \
-        -serial stdio \
-        -no-reboot
-    fi
-  else
-    # Boot mode was changed to ISO during the check, fall through to ISO case
-    echo "Switching to ISO boot..."
-  fi
-  ;;
-
-*)
-  echo "Error: Unknown boot mode '$BOOT_MODE'"
-  exit 1
-  ;;
+    ;;
 esac
-

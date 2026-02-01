@@ -40,7 +40,8 @@ This is the easiest path and avoids all the manual configuration below.
 
 ## Option B: Using virt-manager / libvirt
 
-If you prefer virt-manager, you must configure three things manually. Getting any of these wrong will result in a non-booting system.
+If you prefer virt-manager, you must configure three things manually.
+Getting any of these wrong will result in a non-booting system.
 
 ### 1. UEFI firmware without Secure Boot
 

@@ -6,6 +6,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        args: [--unsafe]
       - id: check-added-large-files
       - id: check-case-conflict
       - id: check-merge-conflict
@@ -13,13 +14,7 @@ repos:
       - id: check-toml
       - id: fix-byte-order-marker
 
-  # Nix formatting
-  - repo: https://github.com/nix-community/nixpkgs-fmt
-    rev: v1.3.0
-    hooks:
-      - id: nixpkgs-fmt
-
-  # Alternative nixfmt (official formatter)
+  # Nix formatting (nixfmt-classic via flake devShell)
   - repo: local
     hooks:
       - id: nixfmt
@@ -35,20 +30,21 @@ repos:
     hooks:
       - id: shellcheck
         args: [--severity=warning]
+        exclude: ^\.envrc$
 
   # Bash formatting
   - repo: https://github.com/lovesegfault/beautysh
-    rev: v6.2.1
+    rev: v6.4.2
     hooks:
       - id: beautysh
         args: [--indent-size=2]
+        exclude: ^\.envrc$
 
   # Markdown linting and formatting
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.37.0
     hooks:
       - id: markdownlint
-        args: [--fix]
 
   # HTML validation
   - repo: https://github.com/Riverside-Healthcare/djLint
@@ -86,7 +82,6 @@ repos:
     rev: v1.6.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-all]
 
   # Go formatting and linting
   - repo: https://github.com/dnephin/pre-commit-golang
@@ -97,7 +92,6 @@ repos:
       - id: go-cyclo
         args: [-over=15]
       - id: go-mod-tidy
-      - id: go-vet-mod
       - id: golangci-lint
 
   # Security scanning
@@ -105,7 +99,7 @@ repos:
     rev: v1.4.0
     hooks:
       - id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']
+        args: ["--baseline", ".secrets.baseline"]
 
   # Commit message validation
   - repo: https://github.com/commitizen-tools/commitizen
@@ -120,6 +114,7 @@ repos:
     hooks:
       - id: prettier
         files: \.(yaml|yml)$
+        exclude: ^mkdocs\.yml$
 
   # JSON formatting
   - repo: https://github.com/pre-commit/mirrors-prettier

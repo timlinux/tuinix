@@ -8,10 +8,8 @@
 # - {{ZFS_POOL_NAME}} - ZFS pool name (default: NIXROOT)
 
 { lib, ... }:
-let
-  disk = "{{DISK_DEVICE}}";
-in
-{
+let disk = "{{DISK_DEVICE}}";
+in {
   disko.devices = {
     disk = {
       main = {
@@ -86,17 +84,13 @@ in
           "home" = {
             type = "zfs_fs";
             mountpoint = "/home";
-            options = {
-              "com.sun:auto-snapshot" = "true";
-            };
+            options = { "com.sun:auto-snapshot" = "true"; };
           };
 
           "overflow" = {
             type = "zfs_fs";
             mountpoint = "/overflow";
-            options = {
-              "com.sun:auto-snapshot" = "true";
-            };
+            options = { "com.sun:auto-snapshot" = "true"; };
           };
 
           "atuin" = {
@@ -106,10 +100,7 @@ in
               type = "filesystem";
               format = "xfs";
               mountpoint = "/var/atuin";
-              mountOptions = [
-                "defaults"
-                "nofail"
-              ];
+              mountOptions = [ "defaults" "nofail" ];
             };
           };
         };
@@ -117,4 +108,3 @@ in
     };
   };
 }
-

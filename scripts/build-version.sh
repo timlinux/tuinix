@@ -29,4 +29,3 @@ EOF
 
 echo "Build information generated:"
 cat build-info.txt
-

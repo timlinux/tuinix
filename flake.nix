@@ -126,7 +126,8 @@
 
       # Documentation apps
       apps.docs-serve = let
-        mkdocsEnv = pkgs.python3.withPackages (ps: with ps; [ mkdocs-material mkdocs-macros ]);
+        mkdocsEnv = pkgs.python3.withPackages
+          (ps: with ps; [ mkdocs-material mkdocs-macros ]);
       in {
         type = "app";
         program = toString (pkgs.writeShellScript "docs-serve" ''
@@ -135,7 +136,8 @@
         '');
       };
       apps.docs-build = let
-        mkdocsEnv = pkgs.python3.withPackages (ps: with ps; [ mkdocs-material mkdocs-macros ]);
+        mkdocsEnv = pkgs.python3.withPackages
+          (ps: with ps; [ mkdocs-material mkdocs-macros ]);
       in {
         type = "app";
         program = toString (pkgs.writeShellScript "docs-build" ''
@@ -189,4 +191,3 @@
 
     };
 }
-

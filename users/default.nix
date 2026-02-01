@@ -4,4 +4,3 @@
 {
   imports = [ ./user.nix ./admin.nix ];
 }
-

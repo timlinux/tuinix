@@ -19,7 +19,7 @@ with lib;
         enable = true;
         wheelNeedsPassword = config.tuinix.security.sudo.wheelNeedsPassword;
       };
-      
+
       # Prevent non-wheel users from running sudo
       doas.enable = false;
     };

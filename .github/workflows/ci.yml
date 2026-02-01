@@ -2,198 +2,198 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   pre-commit:
     name: Pre-commit Quality Checks
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
-    - name: Install Nix
-      uses: cachix/install-nix-action@v30
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Install nixfmt
-      run: nix profile install nixpkgs#nixfmt-classic
-    - uses: pre-commit/action@v3.0.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install nixfmt
+        run: nix profile install nixpkgs#nixfmt-classic
+      - uses: pre-commit/action@v3.0.0
 
   nix-quality:
     name: Nix Quality Checks
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Install Nix
-      uses: cachix/install-nix-action@v30
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Check Nix flake
-      run: nix flake check --show-trace
-    - name: Format check
-      run: nix fmt -- --check .
-    - name: Check for unused inputs
-      run: |
-        nix run nixpkgs#nix-tree -- --derivation $(nix eval --raw .#nixosConfigurations.laptop.config.system.build.toplevel.drvPath) | head -100
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check Nix flake
+        run: nix flake check --show-trace
+      - name: Format check
+        run: nix fmt -- --check .
+      - name: Check for unused inputs
+        run: |
+          nix run nixpkgs#nix-tree -- --derivation $(nix eval --raw .#nixosConfigurations.laptop.config.system.build.toplevel.drvPath) | head -100
 
   shell-quality:
     name: Shell Script Quality
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: ShellCheck
-      uses: ludeeus/action-shellcheck@master
-      with:
-        severity: warning
-        ignore_paths: '.git .github/workflows'
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: warning
+          ignore_paths: ".git .github/workflows"
 
   markdown-quality:
     name: Markdown Quality
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Lint markdown files
-      uses: avto-dev/markdown-lint@v1
-      with:
-        config: '.markdownlint.json'
-        args: '**/*.md'
+      - uses: actions/checkout@v4
+      - name: Lint markdown files
+        uses: avto-dev/markdown-lint@v1
+        with:
+          config: ".markdownlint.json"
+          args: "**/*.md"
 
   python-quality:
     name: Python Quality
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.modified, '.py') || contains(github.event.head_commit.added, '.py')
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install black isort flake8 mypy
-    - name: Black format check
-      run: black --check --diff .
-    - name: Import sort check
-      run: isort --check-only --diff .
-    - name: Flake8 lint
-      run: flake8 .
-    - name: MyPy type check
-      run: mypy . || true  # Allow to pass if no Python files
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black isort flake8 mypy
+      - name: Black format check
+        run: black --check --diff .
+      - name: Import sort check
+        run: isort --check-only --diff .
+      - name: Flake8 lint
+        run: flake8 .
+      - name: MyPy type check
+        run: mypy . || true # Allow to pass if no Python files
 
   go-quality:
     name: Go Quality
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.modified, '.go') || contains(github.event.head_commit.added, '.go')
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
-    - name: Go format check
-      run: |
-        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-          echo "The following files are not properly formatted:"
-          gofmt -s -l .
-          exit 1
-        fi
-    - name: Go vet
-      run: go vet ./... || true  # Allow to pass if no Go files
-    - name: Install golangci-lint
-      run: |
-        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
-    - name: Run golangci-lint
-      run: $(go env GOPATH)/bin/golangci-lint run || true  # Allow to pass if no Go files
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+      - name: Go format check
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "The following files are not properly formatted:"
+            gofmt -s -l .
+            exit 1
+          fi
+      - name: Go vet
+        run: go vet ./... || true # Allow to pass if no Go files
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
+      - name: Run golangci-lint
+        run: $(go env GOPATH)/bin/golangci-lint run || true # Allow to pass if no Go files
 
   web-quality:
     name: Web (HTML/CSS) Quality
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.modified, '.html') || contains(github.event.head_commit.modified, '.css') || contains(github.event.head_commit.added, '.html') || contains(github.event.head_commit.added, '.css')
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-    - name: Install HTML/CSS validators
-      run: |
-        npm install -g html-validate prettier
-    - name: HTML validation
-      run: |
-        find . -name "*.html" -not -path "./.git/*" -exec html-validate {} \; || true
-    - name: CSS format check
-      run: |
-        find . -name "*.css" -not -path "./.git/*" -exec prettier --check {} \; || true
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Install HTML/CSS validators
+        run: |
+          npm install -g html-validate prettier
+      - name: HTML validation
+        run: |
+          find . -name "*.html" -not -path "./.git/*" -exec html-validate {} \; || true
+      - name: CSS format check
+        run: |
+          find . -name "*.css" -not -path "./.git/*" -exec prettier --check {} \; || true
 
   build:
     name: Build and Test
     runs-on: ubuntu-latest
     needs: [pre-commit, nix-quality]
     steps:
-    - uses: actions/checkout@v4
-    - name: Install Nix
-      uses: cachix/install-nix-action@v30
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Setup Cachix
-      uses: cachix/cachix-action@v12
-      with:
-        name: tuinix
-        authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-        skipPush: true
-    - name: Build system
-      run: |
-        # Create a minimal flake.nix for testing if it doesn't exist
-        if [ ! -f flake.nix ]; then
-          cat > flake.nix << 'EOF'
-        {
-          inputs = {
-            nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-          };
-          outputs = { self, nixpkgs }: {
-            nixosConfigurations.tuinix = nixpkgs.lib.nixosSystem {
-              system = "x86_64-linux";
-              modules = [
-                ({ pkgs, ... }: {
-                  system.stateVersion = "23.11";
-                  boot.loader.systemd-boot.enable = true;
-                  boot.loader.efi.canTouchEfiVariables = true;
-                  services.openssh.enable = true;
-                })
-              ];
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v12
+        with:
+          name: tuinix
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          skipPush: true
+      - name: Build system
+        run: |
+          # Create a minimal flake.nix for testing if it doesn't exist
+          if [ ! -f flake.nix ]; then
+            cat > flake.nix << 'EOF'
+          {
+            inputs = {
+              nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
             };
-            formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixpkgs-fmt;
-          };
-        }
-        EOF
-        fi
-        nix build .#nixosConfigurations.laptop.config.system.build.toplevel --show-trace
-    - name: Run tests
-      run: |
-        nix flake check --show-trace
+            outputs = { self, nixpkgs }: {
+              nixosConfigurations.tuinix = nixpkgs.lib.nixosSystem {
+                system = "x86_64-linux";
+                modules = [
+                  ({ pkgs, ... }: {
+                    system.stateVersion = "23.11";
+                    boot.loader.systemd-boot.enable = true;
+                    boot.loader.efi.canTouchEfiVariables = true;
+                    services.openssh.enable = true;
+                  })
+                ];
+              };
+              formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixpkgs-fmt;
+            };
+          }
+          EOF
+          fi
+          nix build .#nixosConfigurations.laptop.config.system.build.toplevel --show-trace
+      - name: Run tests
+        run: |
+          nix flake check --show-trace
 
   security:
     name: Security Scan
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        ignore-unfixed: true
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: 'trivy-results.sarif'
-    - name: Run secret detection
-      run: |
-        pip install detect-secrets
-        detect-secrets scan --baseline .secrets.baseline || true
+      - uses: actions/checkout@v4
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          ignore-unfixed: true
+          format: "sarif"
+          output: "trivy-results.sarif"
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: "trivy-results.sarif"
+      - name: Run secret detection
+        run: |
+          pip install detect-secrets
+          detect-secrets scan --baseline .secrets.baseline || true

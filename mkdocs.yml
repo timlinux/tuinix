@@ -103,6 +103,8 @@ nav:
       - Development Guide: contributing/development.md
       - Guidelines: contributing/guidelines.md
       - AI/LLM Policy: contributing/ai-policy.md
+      - Code of Conduct: contributing/code-of-conduct.md
+      - CLA: contributing/cla.md
   - About:
       - Requirements: about/requirements.md
       - Brand: about/brand.md

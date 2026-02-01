@@ -11,7 +11,13 @@
       "Bash(git remote set-url:*)",
       "Bash(sed:*)",
       "Bash(/home/timlinux/dev/nix/nixtui/PROMPT.log)",
-      "Bash(/home/timlinux/dev/nix/tuinix/PROMPT.log)"
+      "Bash(/home/timlinux/dev/nix/tuinix/PROMPT.log)",
+      "Bash(find:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run watch:*)",
+      "Bash(gh run view:*)",
+      "Bash(nix-shell -p nodePackages.prettier --run \"find /home/timlinux/dev/nix/tuinix -name ''''*.yml'''' -o -name ''''*.yaml'''' | grep -v ''''.git/'''' | grep -v ''''.direnv/'''' | grep -v ''''mkdocs.yml'''' | xargs prettier --write\")",
+      "Bash(nix-shell:*)"
     ],
     "deny": [],
     "ask": []
