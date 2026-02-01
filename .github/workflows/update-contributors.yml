@@ -30,7 +30,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x scripts/update-contributors.sh
-          ./scripts/update-contributors.sh timlinux nixmywindows
+          ./scripts/update-contributors.sh timlinux tuinix
 
       - name: Check for changes
         id: git-check
