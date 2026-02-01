@@ -69,10 +69,10 @@ Before booting from USB, enter your BIOS/UEFI settings (typically by pressing F2
 
 ## Step 4: Run the installer
 
-Once the USB boots, you'll land in a NixOS live environment. Run:
+Once the USB boots, you'll land in `/home/tuinix` with a welcome message showing the mascot and install instructions. Run:
 
 ```bash
-sudo /tuinix/scripts/install.sh
+sudo scripts/install.sh
 ```
 
 The interactive installer will guide you through:

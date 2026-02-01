@@ -96,9 +96,9 @@ Flash the ISO:
 sudo dd if=tuinix.v1.iso of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
-Boot from USB and run the interactive installer:
+Boot from USB -- you'll land in `/home/tuinix` with a welcome message. Run:
 ```bash
-sudo /tuinix/scripts/install.sh
+sudo scripts/install.sh
 ```
 
 > <img src=".github/assets/LOGO.png" width="20"> Full details: [Bare Metal Installation Guide](.github/docs/install-bare-metal.md)

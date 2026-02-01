@@ -693,3 +693,18 @@ Implement an AI/LLM contribution guideline policy similar to https://github.com/
 - Added AI/LLM Tool Policy summary section to .github/CONTRIBUTING.md
 - Added AI_POLICY.md link to .github/README.md documentation hub
 - Policy covers: human-in-the-loop requirement, transparency/labeling, ban on autonomous agents, extractive contributions concept, violation handling, copyright
+
+## 2026-02-01: ISO Welcome Experience
+
+### Prompt
+Make it so when the user boots the live CD they land in /home/tuinix (symlinked from /iso/tuinix), see the mascot logo via chafa and a gum-formatted welcome message telling them to run the install script. Ensure chafa, gum, and the logo are available in the ISO environment.
+
+### Changes Made
+- Created scripts/welcome.sh: displays logo with chafa and welcome message with gum
+- Updated installer.nix:
+  - Added chafa to systemPackages
+  - Added LOGO.png to isoImage.contents
+  - Added activation script to symlink /iso/tuinix -> /home/tuinix
+  - Added programs.bash.loginShellInit to cd into /home/tuinix and source welcome.sh
+  - Removed old systemd tuinix-installer service and README.txt from ISO contents
+- Updated docs (README.md, install-bare-metal.md, INSTALL.md) to reflect new paths

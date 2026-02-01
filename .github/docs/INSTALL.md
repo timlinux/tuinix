@@ -38,7 +38,7 @@ Replace `/dev/diskX` with your USB device (check with `diskutil list`).
 The ISO includes an interactive installer that handles disk partitioning, ZFS setup, and NixOS installation:
 
 ```bash
-sudo /install.sh
+sudo scripts/install.sh
 ```
 
 The installer will guide you through:

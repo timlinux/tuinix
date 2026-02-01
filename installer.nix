@@ -1,50 +1,50 @@
-# nixtui installer ISO configuration
+# tuinix installer ISO configuration
 { config, lib, pkgs, modulesPath, ... }:
 
 {
   imports = [ (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix") ];
 
-  # Include only essential flake files for installation
+  # Include flake files and assets on the ISO
   isoImage.contents = [
     {
       source = ./flake.nix;
-      target = "/nixtui/flake.nix";
+      target = "/tuinix/flake.nix";
     }
     {
       source = ./flake.lock;
-      target = "/nixtui/flake.lock";
+      target = "/tuinix/flake.lock";
     }
     {
       source = ./hosts;
-      target = "/nixtui/hosts";
+      target = "/tuinix/hosts";
     }
     {
       source = ./modules;
-      target = "/nixtui/modules";
+      target = "/tuinix/modules";
     }
     {
       source = ./users;
-      target = "/nixtui/users";
+      target = "/tuinix/users";
     }
     {
       source = ./templates;
-      target = "/nixtui/templates";
+      target = "/tuinix/templates";
     }
     {
       source = ./scripts;
-      target = "/nixtui/scripts";
-    }
-    {
-      source = ./README.txt;
-      target = "/nixtui/README.txt";
+      target = "/tuinix/scripts";
     }
     {
       source = ./build-info.txt;
-      target = "/nixtui/build-info.txt";
+      target = "/tuinix/build-info.txt";
+    }
+    {
+      source = ./.github/assets/LOGO.png;
+      target = "/tuinix/.github/assets/LOGO.png";
     }
   ];
 
-  # Basic packages for installation
+  # Packages for installation environment
   environment.systemPackages = with pkgs; [
     git
     vim
@@ -57,8 +57,9 @@
     dosfstools
     zfs
     disko
-    gum # For rich interactive UX in install script
-    bc # For space calculations in install script
+    gum
+    chafa
+    bc
     nixos-install-tools
     util-linux
   ];
@@ -82,34 +83,21 @@
   # Enable flakes and nix-command for disko and nixos-install
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
-  # Auto-start the installer on boot
-  systemd.services.nixtui-installer = {
-    description = "nixtui automatic installer";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "network.target" ];
-    script = ''
-      # Wait for system to be ready
-      sleep 5
+  # Symlink /iso/tuinix to /home/tuinix and set up welcome on login
+  system.activationScripts.tuinix-home = ''
+    mkdir -p /home
+    ln -sfn /iso/tuinix /home/tuinix
+  '';
 
-      # Clear screen and show installer
-      clear
-      echo "🍃 nixtui Live Installer"
-      echo ""
-      echo "The installer script is located at /install.sh"
-      echo "Run 'sudo /install.sh' to begin installation"
-      echo ""
-      echo "Or explore the system with:"
-      echo "  • View available hosts: ls /nixtui/hosts/"
-      echo "  • Manual installation: nixos-install --flake /nixtui#<hostname>"
-      echo ""
-    '';
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      StandardOutput = "journal+console";
-    };
-  };
+  # Root profile: cd into tuinix dir and show welcome on interactive login
+  programs.bash.loginShellInit = ''
+    if [ -d /home/tuinix ]; then
+      cd /home/tuinix
+      if [ -f scripts/welcome.sh ]; then
+        source scripts/welcome.sh
+      fi
+    fi
+  '';
 
   system.stateVersion = "25.11";
 }
-
