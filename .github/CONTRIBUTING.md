@@ -1,17 +1,18 @@
 <div align="center">
-  <img src="assets/LOGO.png" alt="nixtui logo" width="80" height="80">
+  <img src="assets/LOGO.png" alt="tuinix logo" width="80" height="80">
   
-  # Contributing to nixtui
+  # Contributing to tuinix
   
-  **Welcome to the nixtui contributor community!** 🎉
+  **Welcome to the tuinix contributor community!** 🎉
 </div>
 
-Thank you for your interest in contributing to nixtui! We welcome contributions from everyone and appreciate your help in making this project better.
+Thank you for your interest in contributing to tuinix! We welcome contributions from everyone and appreciate your help in making this project better.
 
 Whether you're fixing a bug, adding a feature, improving documentation, or sharing ideas, your contribution helps build a better terminal-based Linux experience for everyone. The Ubuntu philosophy of "I am because we are" is at the heart of our project - we're stronger together!
 
 ## Table of Contents
 
+- [AI/LLM Tool Policy](#aillm-tool-policy)
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [How to Contribute](#how-to-contribute)
@@ -20,6 +21,14 @@ Whether you're fixing a bug, adding a feature, improving documentation, or shari
 - [Testing](#testing)
 - [Submitting Changes](#submitting-changes)
 - [Community](#community)
+
+## AI/LLM Tool Policy
+
+We welcome the use of AI and LLM tools to help craft contributions, but there must be a **human in the loop**. Contributors must review all tool-generated content before submitting it, be able to answer questions about their work, and label contributions with substantial tool-generated content using a trailer like `Assisted-by: <tool name>`.
+
+Autonomous agents acting without human approval (e.g. the GitHub `@claude` agent) and automated review bots posting without human review are not permitted.
+
+See our full [AI/LLM Tool Policy](AI_POLICY.md) for details.
 
 ## Code of Conduct
 
@@ -39,9 +48,9 @@ This project and everyone participating in it is governed by our [Code of Conduc
 
 ### Reporting Bugs
 
-Before reporting a bug, please check the [issue tracker](https://github.com/timlinux/nixtui/issues) to see if the bug has already been reported.
+Before reporting a bug, please check the [issue tracker](https://github.com/timlinux/tuinix/issues) to see if the bug has already been reported.
 
-When reporting bugs, please use the [bug report template](https://github.com/timlinux/nixtui/issues/new?template=bug_report.yml) and include:
+When reporting bugs, please use the [bug report template](https://github.com/timlinux/tuinix/issues/new?template=bug_report.yml) and include:
 
 - A clear and descriptive title
 - Steps to reproduce the issue
@@ -52,7 +61,7 @@ When reporting bugs, please use the [bug report template](https://github.com/tim
 
 ### Suggesting Features
 
-Feature requests are welcome! Please use the [feature request template](https://github.com/timlinux/nixtui/issues/new?template=feature_request.yml) and include:
+Feature requests are welcome! Please use the [feature request template](https://github.com/timlinux/tuinix/issues/new?template=feature_request.yml) and include:
 
 - A clear and descriptive title
 - A detailed description of the proposed feature
@@ -61,7 +70,7 @@ Feature requests are welcome! Please use the [feature request template](https://
 
 ### Asking Questions
 
-If you have questions about using nixtui, please use the [question template](https://github.com/timlinux/nixtui/issues/new?template=question.yml) or start a [discussion](https://github.com/timlinux/nixtui/discussions).
+If you have questions about using tuinix, please use the [question template](https://github.com/timlinux/tuinix/issues/new?template=question.yml) or start a [discussion](https://github.com/timlinux/tuinix/discussions).
 
 ## Development Setup
 
@@ -75,11 +84,11 @@ If you have questions about using nixtui, please use the [question template](htt
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/nixtui.git
-cd nixtui
+git clone https://github.com/YOUR_USERNAME/tuinix.git
+cd tuinix
 
 # Add the upstream repository as a remote
-git remote add upstream https://github.com/timlinux/nixtui.git
+git remote add upstream https://github.com/timlinux/tuinix.git
 
 # Run the development setup script (sets up pre-commit hooks and tools)
 ../scripts/setup-dev.sh
@@ -88,7 +97,7 @@ git remote add upstream https://github.com/timlinux/nixtui.git
 nix develop
 
 # Build the system to test your changes
-nix build .#nixosConfigurations.nixtui.config.system.build.toplevel
+nix build .#nixosConfigurations.tuinix.config.system.build.toplevel
 ```
 
 ### Building and Testing
@@ -98,7 +107,7 @@ nix build .#nixosConfigurations.nixtui.config.system.build.toplevel
 nix flake check
 
 # Build the ISO image
-nix build .#nixosConfigurations.nixtui.config.system.build.isoImage
+nix build .#nixosConfigurations.tuinix.config.system.build.isoImage
 
 # Test in a virtual machine (if supported)
 nix run .#vm
@@ -171,7 +180,7 @@ docs(readme): update installation instructions
 2. **Test your changes**:
    ```bash
    nix flake check
-   nix build .#nixosConfigurations.nixtui.config.system.build.toplevel
+   nix build .#nixosConfigurations.tuinix.config.system.build.toplevel
    ```
 
 3. **Review your commits**:
@@ -223,9 +232,9 @@ Contributors are recognized in several ways:
 
 ### Communication Channels
 
-- [GitHub Discussions](https://github.com/timlinux/nixtui/discussions) - General discussions
-- [GitHub Issues](https://github.com/timlinux/nixtui/issues) - Bug reports and feature requests
-- [Pull Requests](https://github.com/timlinux/nixtui/pulls) - Code contributions
+- [GitHub Discussions](https://github.com/timlinux/tuinix/discussions) - General discussions
+- [GitHub Issues](https://github.com/timlinux/tuinix/issues) - Bug reports and feature requests
+- [Pull Requests](https://github.com/timlinux/tuinix/pulls) - Code contributions
 
 ### Getting Help
 
@@ -244,4 +253,4 @@ If you need help contributing:
 
 ---
 
-Thank you for contributing to nixtui! Your efforts help make this project better for everyone.
+Thank you for contributing to tuinix! Your efforts help make this project better for everyone.

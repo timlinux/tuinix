@@ -1,32 +1,35 @@
 <div align="center">
-  <img src="assets/LOGO.png" alt="nixtui logo" width="80" height="80">
-  
-  # .github Documentation
-  
-  **GitHub-specific configuration and community resources** 📁
+  <img src="assets/LOGO.png" alt="tuinix logo" width="80" height="80">
+
+  # tuinix Documentation Hub
 </div>
 
-This directory contains GitHub-specific configuration files and documentation for the nixtui project.
+This directory contains GitHub configuration, community resources, and project documentation.
 
-Welcome to the heart of our project's community infrastructure! Here you'll find everything needed to contribute, collaborate, and maintain the high standards that make nixtui exceptional.
+## Documentation
 
-## Structure
+### Installation
+- [**VM Installation**](docs/install-vm.md) -- Install tuinix in a virtual machine
+- [**Bare Metal Installation**](docs/install-bare-metal.md) -- Install on physical hardware
+- [**Legacy Install Guide**](docs/INSTALL.md) -- Original installation reference
 
-- **workflows/**: GitHub Actions CI/CD workflows
-- **ISSUE_TEMPLATE/**: Templates for different types of issues
-- **assets/**: Documentation assets (images, diagrams, etc.)
+### Usage
+- [**Post-Install Guide**](docs/post-install.md) -- First boot and daily usage
 
-## Workflows
+### Development
+- [**Development Guide**](docs/development.md) -- Building, testing, and contributing
+- [**Contributing**](CONTRIBUTING.md) -- How to contribute
+- [**AI/LLM Tool Policy**](AI_POLICY.md) -- Rules for AI-assisted contributions
+- [**Code of Conduct**](CODE_OF_CONDUCT.md) -- Community guidelines
 
-- **ci.yml**: Continuous Integration pipeline for testing and validation
-- **release.yml**: Automated release and build process
+### Project
+- [**Requirements**](docs/REQUIREMENTS.md) -- Original project vision
+- [**Brand Guidelines**](BRAND.md) -- Visual identity and design
+- [**CLA**](CLA.md) -- Contributor License Agreement
+- [**Claude Configuration**](CLAUDE.md) -- AI assistant directives
 
-## Issue Templates
+## GitHub Configuration
 
-- **bug_report.yml**: Template for bug reports
-- **feature_request.yml**: Template for feature requests
-- **question.yml**: Template for questions and discussions
-
-## Contributing
-
-Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for detailed contribution guidelines.
+- `workflows/` -- GitHub Actions CI/CD pipelines
+- `ISSUE_TEMPLATE/` -- Bug report, feature request, and question templates
+- `assets/` -- Logo and visual assets

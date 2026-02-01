@@ -662,3 +662,34 @@ Fix:
 1. Added <serial>nixmywindows-root</serial> to virt-manager VM disk XML
 2. Added serial=nixmywindows-root to all QEMU drive args in run-vm.sh
 3. Requires reinstall since pool must be created with by-id device visible
+I made a mistake before it should be tuinix not nixtui - can you rename everything and the upstream repo
+
+## 2026-02-01: Documentation Restructuring
+
+### Prompt
+Restructure documentation around three environments:
+1. External/Development environment - where contributors work on the flake
+2. Installation environment - VM and bare metal installation guides
+3. Post-install environment - first boot experience
+
+Move top-level docs (REQUIREMENTS.md, INSTALL.md, README.txt) into .github/docs/. Keep top-level directory clean. New README.md with badges, mascot usage, quick install link, and three environment sections. Detailed sub-guides for VM install (UEFI, Secure Boot, disk serial, resource allocation) and bare metal install (USB flashing, BIOS config).
+
+### Changes Made
+- Rewrote README.md with badges, three-environment structure, mascot callouts, quick install link
+- Created .github/docs/install-vm.md (QEMU, virt-manager, VirtualBox, ZFS boot internals)
+- Created .github/docs/install-bare-metal.md (USB flashing, BIOS setup, installer walkthrough)
+- Created .github/docs/post-install.md (first boot, system config, ZFS management)
+- Created .github/docs/development.md (building, testing, repo structure, QA)
+- Moved REQUIREMENTS.md, INSTALL.md, README.txt into .github/docs/
+- Updated .github/README.md as documentation hub
+
+## 2026-02-01: AI/LLM Tool Policy
+
+### Prompt
+Implement an AI/LLM contribution guideline policy similar to https://github.com/qgis/QGIS-Documentation/pull/10714
+
+### Changes Made
+- Created .github/AI_POLICY.md adapted from QGIS/LLVM AI Tool Use Policy
+- Added AI/LLM Tool Policy summary section to .github/CONTRIBUTING.md
+- Added AI_POLICY.md link to .github/README.md documentation hub
+- Policy covers: human-in-the-loop requirement, transparency/labeling, ban on autonomous agents, extractive contributions concept, violation handling, copyright

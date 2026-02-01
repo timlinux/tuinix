@@ -1,6 +1,6 @@
-# nixtui Installation Guide
+# tuinix Installation Guide
 
-This guide will help you install nixtui on your system using the provided ISO image.
+This guide will help you install tuinix on your system using the provided ISO image.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ This guide will help you install nixtui on your system using the provided ISO im
 
 ### On Linux:
 ```bash
-sudo dd if=nixtui.v1.iso of=/dev/sdX bs=4M status=progress
+sudo dd if=tuinix.v1.iso of=/dev/sdX bs=4M status=progress
 ```
 Replace `/dev/sdX` with your USB device (check with `lsblk`).
 
@@ -22,7 +22,7 @@ Use [Rufus](https://rufus.ie/) or [Balena Etcher](https://www.balena.io/etcher/)
 
 ### On macOS:
 ```bash
-sudo dd if=nixtui.v1.iso of=/dev/diskX bs=4m
+sudo dd if=tuinix.v1.iso of=/dev/diskX bs=4m
 ```
 Replace `/dev/diskX` with your USB device (check with `diskutil list`).
 
@@ -30,7 +30,7 @@ Replace `/dev/diskX` with your USB device (check with `diskutil list`).
 
 1. Insert the USB drive into your target computer
 2. Boot from USB (usually F12, F2, or DEL during startup to access boot menu)
-3. Select the nixtui installer from the boot menu
+3. Select the tuinix installer from the boot menu
 4. Wait for the system to boot to the installer environment
 
 ## Step 3: Run the Interactive Installer
@@ -53,12 +53,12 @@ The installer will guide you through:
 
 1. Remove the USB drive
 2. Reboot your system
-3. Boot into your new nixtui installation
+3. Boot into your new tuinix installation
 4. Log in with the credentials configured in the system
 
 ## Configuration Details
 
-Your nixtui system includes:
+Your tuinix system includes:
 
 - **Terminal-focused environment** - Pure terminal-based Linux experience
 - **ZFS filesystem** - Advanced filesystem with snapshots and compression
@@ -132,11 +132,11 @@ directly (`virsh edit <vmname>`) and add a `<serial>` element to the disk:
   <driver name='qemu' type='qcow2'/>
   <source file='/path/to/disk.qcow2'/>
   <target dev='vda' bus='virtio'/>
-  <serial>nixtui-root</serial>
+  <serial>tuinix-root</serial>
 </disk>
 ```
 
-This creates `/dev/disk/by-id/virtio-nixtui-root` inside the VM,
+This creates `/dev/disk/by-id/virtio-tuinix-root` inside the VM,
 which is what `zpool import -d /dev/disk/by-id` needs to find the pool.
 
 #### 3. Virtio block driver in initrd
@@ -174,10 +174,10 @@ Common failure modes:
 
 ## Customization
 
-After installation, the flake is copied to `/etc/nixtui` and `/home/user/nixtui`. To make changes:
+After installation, the flake is copied to `/etc/tuinix` and `/home/user/tuinix`. To make changes:
 
-- Edit the flake in `/home/user/nixtui`
-- Rebuild with `sudo nixos-rebuild switch --flake /home/user/nixtui#<hostname>`
+- Edit the flake in `/home/user/tuinix`
+- Rebuild with `sudo nixos-rebuild switch --flake /home/user/tuinix#<hostname>`
 
 ## Troubleshooting
 
@@ -226,7 +226,7 @@ If you need to recover your system:
 3. Load encryption keys: `sudo zfs load-key -a`
 4. Mount: `sudo zfs mount -a`
 5. Chroot: `sudo nixos-enter --root /mnt`
-6. Rebuild: `nixos-rebuild boot --flake /etc/nixtui#<hostname>`
+6. Rebuild: `nixos-rebuild boot --flake /etc/tuinix#<hostname>`
 
 ---
 

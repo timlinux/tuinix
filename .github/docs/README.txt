@@ -1,9 +1,9 @@
-nixtui Installation ISO
+tuinix Installation ISO
 
-This ISO contains the nixtui NixOS configuration for laptop installations.
+This ISO contains the tuinix NixOS configuration for laptop installations.
 
 QUICK INSTALLATION (Recommended):
-  sudo /nixtui/scripts/install.sh
+  sudo /tuinix/scripts/install.sh
 
 This automated script will guide you through:
 - Disk selection and formatting with ZFS
@@ -14,8 +14,8 @@ This automated script will guide you through:
 MANUAL INSTALLATION:
 1. Boot from this ISO
 2. Connect to the internet (wifi-connect or ethernet)  
-3. Run: sudo disko --mode disko /iso/nixtui/hosts/laptop/disks.nix --arg device '"/dev/sdX"'
-4. Run: sudo nixos-install --flake /iso/nixtui#laptop
+3. Run: sudo disko --mode disko /iso/tuinix/hosts/laptop/disks.nix --arg device '"/dev/sdX"'
+4. Run: sudo nixos-install --flake /iso/tuinix#laptop
 5. Set root password when prompted
 6. Reboot
 
@@ -24,7 +24,7 @@ SSH is enabled for remote installation
 
 INSTALLATION WORKFLOW:
 
-                   nixtui Installation Workflow
+                   tuinix Installation Workflow
                    ===================================
 
     ┌─────────────────┐
@@ -52,7 +52,7 @@ INSTALLATION WORKFLOW:
           │
           ▼
     ┌─────────────────┐
-    │ GENERATE HOST   │ • Copy flake to /tmp/nixtui-install
+    │ GENERATE HOST   │ • Copy flake to /tmp/tuinix-install
     │ CONFIGURATION   │ • Create hosts/$HOSTNAME/default.nix
     └─────┬───────────┘ • Generate disks.nix from template
           │             • Create initial hardware.nix
@@ -81,8 +81,8 @@ INSTALLATION WORKFLOW:
           │
           ▼
     ┌─────────────────┐
-    │   COPY FLAKE    │ • Copy flake to /mnt/etc/nixtui
-    │   TO SYSTEM     │ • Copy flake to /mnt/home/user/nixtui
+    │   COPY FLAKE    │ • Copy flake to /mnt/etc/tuinix
+    │   TO SYSTEM     │ • Copy flake to /mnt/home/user/tuinix
     └─────┬───────────┘ • Set proper ownership and permissions
           │
           ▼
@@ -109,4 +109,4 @@ Key Components:
 • Flake-based NixOS installation
 • Comprehensive hardware detection and configuration
 
-For more information, see the flake configuration in /nixtui/
+For more information, see the flake configuration in /tuinix/

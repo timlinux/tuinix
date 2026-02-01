@@ -1,7 +1,7 @@
 <div align="center">
-  <img src=".github/assets/LOGO.png" alt="nixtui logo" width="120" height="120">
+  <img src=".github/assets/LOGO.png" alt="tuinix logo" width="120" height="120">
   
-  # NIXTUI
+  # TUINIX
   ## A Pure Terminal Based Linux Experience
   
   **Welcome to the journey of creating the perfect terminal-first Linux experience!** ⚡
@@ -9,7 +9,7 @@
 
 This project seeks to create a useable, user friendly, terminal centric Linux experience, based on NixOS.
 
-Born from the vision of combining the power of NixOS with the elegance of terminal-based computing, nixtui represents a return to the essence of what makes Linux powerful - direct, efficient, and completely under your control.
+Born from the vision of combining the power of NixOS with the elegance of terminal-based computing, tuinix represents a return to the essence of what makes Linux powerful - direct, efficient, and completely under your control.
 
 ## Features
 
