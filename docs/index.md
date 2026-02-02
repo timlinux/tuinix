@@ -50,9 +50,14 @@ cd tuinix && ./scripts/build-iso.sh
 Write the ISO to a USB drive and boot from it.
 UEFI is required -- disable Secure Boot.
 
-```bash
-sudo dd if={{ iso.filename }} of=/dev/sdX bs=4M status=progress
-```
+Use [balenaEtcher](https://etcher.balena.io/) or
+[Ventoy](https://www.ventoy.net/) to flash the ISO.
+
+??? tip "Advanced: using dd"
+
+    ```bash
+    sudo dd if={{ iso.filename }} of=/dev/sdX bs=4M status=progress
+    ```
 
 </div>
 

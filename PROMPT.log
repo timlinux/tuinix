@@ -743,3 +743,4 @@ PROMPT: nice. the references to the iso in the docs need to be consistent with t
 PROMPT: occasionally (e.g. now) I will want to push updates to the github pages. Can you add support for doing that and then commit, push and publish the updates you have made
 PROMPT: well we cant have both the action deployment and the gh-pages branch so that is not going to work
 PROMPT.log
+2026-02-02 00:04:44 UTC - Updated homepage Flash & Boot step to recommend balenaEtcher/Ventoy as primary, dd as advanced option
