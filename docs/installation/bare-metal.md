@@ -76,18 +76,22 @@ Before booting from USB, enter your BIOS/UEFI settings (typically by pressing F2
 Once the USB boots, you'll land in `/home/tuinix` with a welcome message showing the mascot and install instructions. Run:
 
 ```bash
-sudo scripts/install.sh
+sudo tuinix-installer
 ```
 
-The interactive installer will guide you through:
+The interactive TUI installer will guide you through:
 
-1. **Hostname** -- name your machine
-2. **Disk selection** -- choose the target disk (the installer shows all available disks)
-3. **ZFS encryption** -- set a passphrase for full-disk encryption
-4. **Locale and keyboard** -- select your region and layout
-5. **Confirmation** -- review the summary, type `DESTROY` to confirm
-6. **Installation** -- partitioning, formatting, and NixOS install run automatically
-7. **Root password** -- set the root password for your new system
+1. **User account** -- enter your username, full name, and email address
+2. **Hostname** -- name your machine
+3. **Disk selection** -- choose the target disk (the installer shows all available disks)
+4. **ZFS encryption** -- set a passphrase for full-disk encryption
+5. **Locale and keyboard** -- select your region and layout
+6. **Confirmation** -- review the summary, type `DESTROY` to confirm
+7. **Installation** -- partitioning, formatting, and NixOS install run automatically
+
+!!! note "Credentials"
+    Your user account will be created with initial password `changeme`.
+    Change this immediately after first login!
 
 ## Step 5: First boot
 
@@ -119,13 +123,27 @@ ZFS datasets created:
 After installation, the flake is copied to two locations:
 
 - `/etc/tuinix` -- system reference copy
-- `/home/user/tuinix` -- your working copy
+- `/home/<username>/tuinix` -- your working copy (a git repo tracking upstream)
+
+Your user configuration is at `users/<username>.nix` and includes:
+
+- User account settings
+- Home-manager git configuration with your name and email
+- Default groups (wheel, networkmanager, audio, video, docker)
 
 To make changes to your system configuration:
 
 ```bash
 cd ~/tuinix
 # Edit configuration files
+sudo nixos-rebuild switch --flake .#<hostname>
+```
+
+To pull upstream changes:
+
+```bash
+cd ~/tuinix
+git pull
 sudo nixos-rebuild switch --flake .#<hostname>
 ```
 
