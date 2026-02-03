@@ -745,3 +745,4 @@ PROMPT: well we cant have both the action deployment and the gh-pages branch so 
 PROMPT.log
 2026-02-02 00:04:44 UTC - Updated homepage Flash & Boot step to recommend balenaEtcher/Ventoy as primary, dd as advanced option
 2026-02-02 00:28:40 UTC - Removed obsolete README.txt validation check from build-iso.sh (file was deleted in previous session)
+2026-02-03 18:48:42 UTC - Enhanced installer: prompt for username/fullname/email, create dynamic user.nix with home-manager git config, fix git identity for commit, add Portuguese locale/keyboard options

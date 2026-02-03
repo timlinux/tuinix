@@ -9,7 +9,8 @@ After installation and reboot:
 1. GRUB loads automatically
 2. You'll be prompted for your ZFS encryption passphrase
 3. The system boots to a terminal login prompt
-4. Log in as `root` (with the password you set during installation)
+4. Log in with the username you created during installation (default password: `changeme`)
+5. **Change your password immediately**: `passwd`
 
 ## Your environment
 
@@ -38,8 +39,12 @@ Your tuinix flake is a git repository cloned from upstream:
 
 The installer creates `~/tuinix` as a shallow clone of the upstream
 tuinix repo with your host-specific configuration (`hosts/<hostname>/`)
-grafted in and committed. This means you can pull upstream improvements
-while keeping your local host customizations.
+and user configuration (`users/<username>.nix`) grafted in and committed.
+This means you can pull upstream improvements while keeping your local
+host customizations.
+
+Git is pre-configured with your name and email (as entered during installation),
+so you can commit changes immediately without any additional setup.
 
 ### Making changes
 
