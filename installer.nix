@@ -69,6 +69,7 @@ in
     gptfdisk
     e2fsprogs
     dosfstools
+    xfsprogs
     zfs
     disko
     gum

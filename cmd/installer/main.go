@@ -120,6 +120,59 @@ var (
 			Align(lipgloss.Center)
 )
 
+// Storage mode determines disk layout strategy
+type storageMode int
+
+const (
+	storageZFSEncryptedSingle storageMode = iota // Encrypted ZFS, single disk (original)
+	storageXFS                                   // XFS unencrypted, single disk (max performance)
+	storageZFSStripe                             // Encrypted ZFS stripe, multi-disk (combined space)
+	storageZFSRaidz                              // Encrypted ZFS raidz, multi-disk (1 disk fault tolerance)
+	storageZFSRaidz2                             // Encrypted ZFS raidz2, multi-disk (2 disk fault tolerance)
+)
+
+func (s storageMode) String() string {
+	switch s {
+	case storageZFSEncryptedSingle:
+		return "Encrypted ZFS (single disk)"
+	case storageXFS:
+		return "XFS unencrypted (max performance)"
+	case storageZFSStripe:
+		return "Encrypted ZFS stripe (combined space)"
+	case storageZFSRaidz:
+		return "Encrypted ZFS raidz (1-disk fault tolerance)"
+	case storageZFSRaidz2:
+		return "Encrypted ZFS raidz2 (2-disk fault tolerance)"
+	default:
+		return "Unknown"
+	}
+}
+
+func (s storageMode) isZFS() bool {
+	return s != storageXFS
+}
+
+func (s storageMode) isEncrypted() bool {
+	return s != storageXFS
+}
+
+func (s storageMode) isMultiDisk() bool {
+	return s == storageZFSStripe || s == storageZFSRaidz || s == storageZFSRaidz2
+}
+
+func (s storageMode) minDisks() int {
+	switch s {
+	case storageZFSRaidz:
+		return 3
+	case storageZFSRaidz2:
+		return 4
+	case storageZFSStripe:
+		return 2
+	default:
+		return 1
+	}
+}
+
 // Installation state
 type installState int
 
@@ -133,7 +186,9 @@ const (
 	statePassword
 	statePasswordConfirm
 	stateHostname
+	stateStorageMode
 	stateDisk
+	stateDiskMulti
 	statePassphrase
 	statePassphraseConfirm
 	stateLocale
@@ -150,6 +205,22 @@ type stepInfo struct {
 	title       string
 	description string
 	stepNum     int
+}
+
+var storageModes = []storageMode{
+	storageZFSEncryptedSingle,
+	storageXFS,
+	storageZFSStripe,
+	storageZFSRaidz,
+	storageZFSRaidz2,
+}
+
+var storageModeDescriptions = map[storageMode]string{
+	storageZFSEncryptedSingle: "Single disk with AES-256-GCM encryption, compression, and snapshots",
+	storageXFS:                "Single disk, no encryption. Maximum raw I/O performance",
+	storageZFSStripe:          "Multiple disks combined for maximum space (no redundancy)",
+	storageZFSRaidz:           "Multiple disks with single parity. Tolerates 1 disk failure (min 3 disks)",
+	storageZFSRaidz2:          "Multiple disks with double parity. Tolerates 2 disk failures (min 4 disks)",
 }
 
 var wizardSteps = map[installState]stepInfo{
@@ -236,6 +307,24 @@ Keep it short, memorable, and lowercase.
 Use only letters, numbers, and hyphens.`,
 		stepNum: 6,
 	},
+	stateStorageMode: {
+		title: "Storage Mode",
+		description: `Select how your disk(s) will be configured.
+
+Single disk options:
+• Encrypted ZFS - Secure, with snapshots
+  and compression (recommended)
+• XFS - Maximum performance, no encryption
+
+Multi-disk options (requires 2+ disks):
+• ZFS Stripe - Combines all disks into one
+  pool for maximum space (no redundancy)
+• ZFS Raidz - Single parity, tolerates 1
+  disk failure (needs 3+ disks)
+• ZFS Raidz2 - Double parity, tolerates 2
+  disk failures (needs 4+ disks)`,
+		stepNum: 7,
+	},
 	stateDisk: {
 		title: "Target Disk",
 		description: `Select the disk to install tuinix on.
@@ -243,17 +332,25 @@ Use only letters, numbers, and hyphens.`,
 WARNING: The selected disk will be
 COMPLETELY ERASED! All existing data,
 partitions, and operating systems will
-be destroyed.
+be destroyed.`,
+		stepNum: 8,
+	},
+	stateDiskMulti: {
+		title: "Select Disks",
+		description: `Select the disks to include in your
+ZFS pool.
 
-The installer will create:
-• EFI boot partition (512MB)
-• Encrypted ZFS pool (rest of disk)
+WARNING: ALL selected disks will be
+COMPLETELY ERASED! All existing data,
+partitions, and operating systems on
+every selected disk will be destroyed.
 
-ZFS datasets created:
-• NIXROOT/root - System root
-• NIXROOT/nix  - Nix store
-• NIXROOT/home - User data`,
-		stepNum: 7,
+Use Space to toggle disk selection.
+The first selected disk will also host
+the EFI boot partition.
+
+Press Enter when done selecting.`,
+		stepNum: 8,
 	},
 	statePassphrase: {
 		title: "ZFS Encryption Passphrase",
@@ -272,7 +369,7 @@ Requirements:
 
 If you forget this passphrase, your
 data cannot be recovered.`,
-		stepNum: 8,
+		stepNum: 9,
 	},
 	statePassphraseConfirm: {
 		title: "Confirm Passphrase",
@@ -281,7 +378,7 @@ passphrase to confirm.
 
 Make sure you remember this passphrase.
 You will need it every time you boot.`,
-		stepNum: 9,
+		stepNum: 10,
 	},
 	stateLocale: {
 		title: "System Locale",
@@ -295,7 +392,7 @@ This configures:
 
 The locale affects terminal output,
 file sorting, and application behavior.`,
-		stepNum: 10,
+		stepNum: 11,
 	},
 	stateKeymap: {
 		title: "Keyboard Layout",
@@ -310,14 +407,14 @@ Common layouts:
 • uk - UK English
 • de - German (QWERTZ)
 • fr - French (AZERTY)`,
-		stepNum: 11,
+		stepNum: 12,
 	},
 	stateSummary: {
 		title: "Review Configuration",
 		description: `Please review your installation settings.
 
 After confirmation, the installer will:
-1. Format the disk with ZFS encryption
+1. Format the disk(s)
 2. Generate NixOS configuration
 3. Install the base system
 4. Configure your user account
@@ -326,45 +423,47 @@ After confirmation, the installer will:
 This process takes 10-30 minutes
 depending on your hardware and
 internet connection speed.`,
-		stepNum: 12,
+		stepNum: 13,
 	},
 	stateConfirm: {
 		title: "Final Confirmation",
 		description: `DANGER: Point of no return!
 
 You are about to PERMANENTLY DESTROY
-all data on the selected disk.
+all data on the selected disk(s).
 
 This action cannot be undone.
 
 To proceed, type DESTROY exactly.
 To cancel, press Ctrl+C or q.`,
-		stepNum: 13,
+		stepNum: 14,
 	},
 }
 
-const totalSteps = 13
+const totalSteps = 14
 
 // Config holds all installation configuration
 type Config struct {
-	Username    string
-	Fullname    string
-	Email       string
-	Password    string
-	Hostname    string
-	Disk        string
-	HostID      string
-	Passphrase  string
+	Username      string
+	Fullname      string
+	Email         string
+	Password      string
+	Hostname      string
+	Disk          string   // Primary disk (single-disk modes, or boot disk for multi-disk)
+	Disks         []string // All selected disks (multi-disk modes)
+	HostID        string
+	Passphrase    string
+	StorageMode   storageMode
 	Locale        string
 	Keymap        string
 	ConsoleKeyMap string
-	SpaceBoot   string
-	SpaceNix    string
-	SpaceHome   string
-	SpaceAtuin  string
-	ZFSPoolName string
-	ProjectRoot string
-	WorkDir     string
+	SpaceBoot     string
+	SpaceNix      string
+	SpaceHome     string
+	SpaceAtuin    string
+	ZFSPoolName   string
+	ProjectRoot   string
+	WorkDir       string
 }
 
 // Particle for fire effect
@@ -413,6 +512,7 @@ type model struct {
 	err         error
 	disks       []diskInfo
 	selectedIdx int
+	diskSelected []bool // For multi-disk selection (toggle with space)
 	locales     []string
 	keymaps     []keymapEntry
 
@@ -582,8 +682,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.state != stateFireTransition && m.state != stateGravityOut && m.state != stateSplash {
 				return m.handleEnter()
 			}
+		case " ":
+			// Space toggles disk selection in multi-disk mode
+			if m.state == stateDiskMulti && m.selectedIdx < len(m.disks) {
+				m.diskSelected[m.selectedIdx] = !m.diskSelected[m.selectedIdx]
+			}
 		case "up", "k":
-			if m.state == stateDisk || m.state == stateLocale || m.state == stateKeymap {
+			if m.state == stateDisk || m.state == stateDiskMulti || m.state == stateLocale || m.state == stateKeymap || m.state == stateStorageMode {
 				if m.selectedIdx > 0 {
 					m.selectedIdx--
 				}
@@ -591,9 +696,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			if m.state == stateDisk && m.selectedIdx < len(m.disks)-1 {
 				m.selectedIdx++
+			} else if m.state == stateDiskMulti && m.selectedIdx < len(m.disks)-1 {
+				m.selectedIdx++
 			} else if m.state == stateLocale && m.selectedIdx < len(m.locales)-1 {
 				m.selectedIdx++
 			} else if m.state == stateKeymap && m.selectedIdx < len(m.keymaps)-1 {
+				m.selectedIdx++
+			} else if m.state == stateStorageMode && m.selectedIdx < len(storageModes)-1 {
 				m.selectedIdx++
 			}
 		}
@@ -627,7 +736,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state == stateEmail || m.state == statePassword || m.state == statePasswordConfirm ||
 		m.state == stateHostname ||
 		m.state == statePassphrase || m.state == statePassphraseConfirm ||
-		m.state == stateConfirm {
+		m.state == stateConfirm ||
+		m.state == stateStorageMode || m.state == stateDiskMulti {
 		m.input, cmd = m.input.Update(msg)
 		cmds = append(cmds, cmd)
 	}
@@ -794,20 +904,69 @@ func (m model) handleEnter() (tea.Model, tea.Cmd) {
 		}
 		m.config.Hostname = val
 		m.err = nil
-		m.state = stateDisk
+		m.state = stateStorageMode
+		m.selectedIdx = 0
+
+	case stateStorageMode:
+		mode := storageModes[m.selectedIdx]
+		m.config.StorageMode = mode
 		m.disks = getAvailableDisks()
 		m.selectedIdx = 0
+		m.err = nil
+		if mode.isMultiDisk() {
+			if len(m.disks) < mode.minDisks() {
+				m.err = fmt.Errorf("%s requires at least %d disks, but only %d found", mode, mode.minDisks(), len(m.disks))
+				return m, nil
+			}
+			m.diskSelected = make([]bool, len(m.disks))
+			m.state = stateDiskMulti
+		} else {
+			m.state = stateDisk
+		}
 
 	case stateDisk:
 		if len(m.disks) > 0 {
 			m.config.Disk = m.disks[m.selectedIdx].Path
+			m.config.Disks = []string{m.config.Disk}
 			m.config.HostID = generateHostID()
-			m.state = statePassphrase
-			m.input.SetValue("")
-			m.input.Placeholder = "Enter ZFS encryption passphrase"
-			m.input.EchoMode = textinput.EchoPassword
-			m.input.EchoCharacter = '*'
+			if m.config.StorageMode.isEncrypted() {
+				m.state = statePassphrase
+				m.input.SetValue("")
+				m.input.Placeholder = "Enter ZFS encryption passphrase"
+				m.input.EchoMode = textinput.EchoPassword
+				m.input.EchoCharacter = '*'
+			} else {
+				// XFS mode: skip passphrase, go to locale
+				m.state = stateLocale
+				m.input.SetValue("")
+				m.input.EchoMode = textinput.EchoNormal
+				m.input.EchoCharacter = 0
+				m.selectedIdx = 0
+			}
 		}
+
+	case stateDiskMulti:
+		var selectedDisks []string
+		for i, sel := range m.diskSelected {
+			if sel {
+				selectedDisks = append(selectedDisks, m.disks[i].Path)
+			}
+		}
+		minRequired := m.config.StorageMode.minDisks()
+		if len(selectedDisks) < minRequired {
+			m.err = fmt.Errorf("select at least %d disks for %s", minRequired, m.config.StorageMode)
+			return m, nil
+		}
+		m.config.Disks = selectedDisks
+		m.config.Disk = selectedDisks[0] // First disk is the boot disk
+		m.config.HostID = generateHostID()
+		m.err = nil
+		// Multi-disk modes are always encrypted ZFS
+		m.state = statePassphrase
+		m.input.SetValue("")
+		m.input.Placeholder = "Enter ZFS encryption passphrase"
+		m.input.EchoMode = textinput.EchoPassword
+		m.input.EchoCharacter = '*'
 
 	case statePassphrase:
 		val := m.input.Value()
@@ -1032,6 +1191,23 @@ func (m model) renderRightPanel(stepNum int) string {
 		hint := grayStyle.Render("\nEnter to continue | Ctrl+C to quit")
 		content = inputBox + errText + hint
 
+	case stateStorageMode:
+		var modeList strings.Builder
+		for i, mode := range storageModes {
+			cursor := "  "
+			style := lipgloss.NewStyle().Foreground(colorOffWhite)
+			if i == m.selectedIdx {
+				cursor = "> "
+				style = style.Foreground(colorOrange).Bold(true)
+			}
+			modeList.WriteString(style.Render(cursor + mode.String()))
+			modeList.WriteString("\n")
+			modeList.WriteString(grayStyle.Render("   " + storageModeDescriptions[mode]))
+			modeList.WriteString("\n")
+		}
+		hint := grayStyle.Render("\nUp/Down to select | Enter to confirm")
+		content = modeList.String() + hint
+
 	case stateDisk:
 		var diskList strings.Builder
 		for i, disk := range m.disks {
@@ -1053,6 +1229,45 @@ func (m model) renderRightPanel(stepNum int) string {
 		warning := errorStyle.Render("! ALL DATA WILL BE DESTROYED!")
 		hint := grayStyle.Render("\nUp/Down to select | Enter to confirm")
 		content = warning + "\n\n" + diskList.String() + hint
+
+	case stateDiskMulti:
+		var diskList strings.Builder
+		selectedCount := 0
+		for i, disk := range m.disks {
+			cursor := "  "
+			check := "[ ]"
+			style := lipgloss.NewStyle().Foreground(colorOffWhite)
+			if i == m.selectedIdx {
+				cursor = "> "
+				style = style.Foreground(colorOrange).Bold(true)
+			}
+			if m.diskSelected[i] {
+				check = "[x]"
+				selectedCount++
+			}
+			line := fmt.Sprintf("%s%s %-10s %8s", cursor, check, disk.Path, disk.Size)
+			diskList.WriteString(style.Render(line))
+			diskList.WriteString("\n")
+			if disk.Model != "" {
+				diskList.WriteString(grayStyle.Render("      " + disk.Model))
+				diskList.WriteString("\n")
+			}
+		}
+
+		minDisks := m.config.StorageMode.minDisks()
+		status := fmt.Sprintf("Selected: %d (min %d)", selectedCount, minDisks)
+		statusStyle := lipgloss.NewStyle().Foreground(colorDimGray)
+		if selectedCount >= minDisks {
+			statusStyle = statusStyle.Foreground(colorGreen)
+		}
+
+		warning := errorStyle.Render("! ALL SELECTED DISKS WILL BE DESTROYED!")
+		var errText string
+		if m.err != nil {
+			errText = "\n" + errorStyle.Render("! "+m.err.Error())
+		}
+		hint := grayStyle.Render("\nSpace to toggle | Up/Down to move | Enter to confirm")
+		content = warning + "\n" + statusStyle.Render(status) + "\n\n" + diskList.String() + errText + hint
 
 	case stateLocale:
 		var optList strings.Builder
@@ -1086,20 +1301,40 @@ func (m model) renderRightPanel(stepNum int) string {
 
 	case stateSummary:
 		infoStyle := lipgloss.NewStyle().Foreground(colorOffWhite)
+
+		// Build disk info section
+		var diskInfo string
+		if m.config.StorageMode.isMultiDisk() {
+			diskInfo = infoStyle.Render(fmt.Sprintf("  Disks:     %s", strings.Join(m.config.Disks, ", ")))
+		} else {
+			diskInfo = infoStyle.Render(fmt.Sprintf("  Disk:      %s", m.config.Disk))
+		}
+
+		// Build storage allocation section
+		var allocSection string
+		if m.config.StorageMode.isZFS() {
+			allocSection = promptStyle.Render("Disk Allocation") + "\n" +
+				infoStyle.Render(fmt.Sprintf("  /boot:      %s", m.config.SpaceBoot)) + "\n" +
+				infoStyle.Render(fmt.Sprintf("  /nix:       %s", m.config.SpaceNix)) + "\n" +
+				infoStyle.Render(fmt.Sprintf("  /home:      remainder"))
+		} else {
+			allocSection = promptStyle.Render("Disk Allocation") + "\n" +
+				infoStyle.Render(fmt.Sprintf("  /boot:      %s", m.config.SpaceBoot)) + "\n" +
+				infoStyle.Render("  /:          remainder (XFS)")
+		}
+
 		content = promptStyle.Render("User Account") + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Username:  %s", m.config.Username)) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Full name: %s", m.config.Fullname)) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Email:     %s", m.config.Email)) + "\n\n" +
 			promptStyle.Render("System") + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Hostname:  %s", m.config.Hostname)) + "\n" +
-			infoStyle.Render(fmt.Sprintf("  Disk:      %s", m.config.Disk)) + "\n" +
+			infoStyle.Render(fmt.Sprintf("  Storage:   %s", m.config.StorageMode)) + "\n" +
+			diskInfo + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Host ID:   %s", m.config.HostID)) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Locale:    %s", m.config.Locale)) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Keyboard:  %s", m.config.Keymap)) + "\n\n" +
-			promptStyle.Render("Disk Allocation") + "\n" +
-			infoStyle.Render(fmt.Sprintf("  /boot:      %s", m.config.SpaceBoot)) + "\n" +
-			infoStyle.Render(fmt.Sprintf("  /nix:       %s", m.config.SpaceNix)) + "\n" +
-			infoStyle.Render(fmt.Sprintf("  /home:      %s", m.config.SpaceHome)) + "\n\n" +
+			allocSection + "\n\n" +
 			grayStyle.Render("Enter to proceed | Ctrl+C to cancel")
 	}
 
@@ -1197,7 +1432,7 @@ func (m model) viewSplash() string {
 		Foreground(colorNixBlue).
 		Align(lipgloss.Center).
 		Width(m.width - 4).
-		Render("Terminal-focused NixOS with ZFS encryption")
+		Render("Terminal-focused NixOS")
 
 	version := detailStyle.Copy().
 		Align(lipgloss.Center).
@@ -1275,17 +1510,7 @@ func (m model) viewInstalling() string {
 		Width(m.width - 4).
 		Render("Installing tuinix")
 
-	steps := []string{
-		"Generating host configuration",
-		"Formatting disk with ZFS",
-		"Generating hardware configuration",
-		"Installing NixOS",
-		"Configuring ZFS boot",
-		"Copying flake to new system",
-		"Setting up user flake",
-		"Setting root password",
-		"Finalizing ZFS pool",
-	}
+	steps := m.getInstallStepNames()
 
 	pendingStyle := lipgloss.NewStyle().Foreground(colorDimGray)
 	activeStyle := lipgloss.NewStyle().Foreground(colorOffWhite).Bold(true)
@@ -1517,38 +1742,101 @@ func getAvailableDisks() []diskInfo {
 }
 
 func calculateSpaceAllocation(c *Config) {
-	cmd := exec.Command("lsblk", "-d", "-n", "-b", "-o", "SIZE", c.Disk)
-	output, err := cmd.Output()
-	if err != nil {
-		c.SpaceNix = "50G"
-		c.SpaceHome = "100G"
-		c.SpaceAtuin = "1G"
-		return
+	// For multi-disk ZFS, calculate total pool size across all disks
+	// (excluding the boot partition on the first disk)
+	var totalSizeGB int64
+
+	if c.StorageMode.isMultiDisk() {
+		for _, disk := range c.Disks {
+			sizeGB := getDiskSizeGB(disk)
+			totalSizeGB += sizeGB
+		}
+		// For raidz, usable space is roughly (N-1)/N of total
+		// For raidz2, usable space is roughly (N-2)/N of total
+		// For stripe, usable space is total
+		n := int64(len(c.Disks))
+		switch c.StorageMode {
+		case storageZFSRaidz:
+			totalSizeGB = totalSizeGB * (n - 1) / n
+		case storageZFSRaidz2:
+			totalSizeGB = totalSizeGB * (n - 2) / n
+		}
+	} else {
+		totalSizeGB = getDiskSizeGB(c.Disk)
 	}
 
-	var sizeBytes int64
-	fmt.Sscanf(strings.TrimSpace(string(output)), "%d", &sizeBytes)
-	sizeGB := sizeBytes / 1024 / 1024 / 1024
-
-	if sizeGB == 0 {
-		sizeGB = 100
+	if totalSizeGB == 0 {
+		totalSizeGB = 100
 	}
 
 	bootGB := int64(5)
-	nixGB := sizeGB * 5 / 100
+	c.SpaceBoot = fmt.Sprintf("%dG", bootGB)
+
+	if !c.StorageMode.isZFS() {
+		// XFS: just boot + root, no separate partitions
+		c.SpaceNix = ""
+		c.SpaceAtuin = ""
+		c.SpaceHome = ""
+		return
+	}
+
+	// The boot partition is separate from the ZFS pool, so subtract it
+	// from the first disk's contribution to get actual pool size
+	poolSizeGB := totalSizeGB - bootGB
+
+	nixGB := poolSizeGB * 5 / 100
 	if nixGB < 20 {
 		nixGB = 20
 	}
-	atuinGB := sizeGB * 5 / 10000
+	atuinGB := poolSizeGB * 5 / 10000
 	if atuinGB < 1 {
 		atuinGB = 1
 	}
-	homeGB := sizeGB - bootGB - nixGB - atuinGB
+	homeGB := poolSizeGB - nixGB - atuinGB
 
-	c.SpaceBoot = fmt.Sprintf("%dG", bootGB)
 	c.SpaceNix = fmt.Sprintf("%dG", nixGB)
 	c.SpaceAtuin = fmt.Sprintf("%dG", atuinGB)
 	c.SpaceHome = fmt.Sprintf("%dG", homeGB)
+}
+
+func getDiskSizeGB(disk string) int64 {
+	cmd := exec.Command("lsblk", "-d", "-n", "-b", "-o", "SIZE", disk)
+	output, err := cmd.Output()
+	if err != nil {
+		return 100
+	}
+	var sizeBytes int64
+	fmt.Sscanf(strings.TrimSpace(string(output)), "%d", &sizeBytes)
+	sizeGB := sizeBytes / 1024 / 1024 / 1024
+	if sizeGB == 0 {
+		sizeGB = 100
+	}
+	return sizeGB
+}
+
+func (m model) getInstallStepNames() []string {
+	if m.config.StorageMode.isZFS() {
+		return []string{
+			"Generating host configuration",
+			"Formatting disk(s) with ZFS",
+			"Generating hardware configuration",
+			"Installing NixOS",
+			"Configuring ZFS boot",
+			"Copying flake to new system",
+			"Setting up user flake",
+			"Copying install log",
+			"Finalizing ZFS pool",
+		}
+	}
+	return []string{
+		"Generating host configuration",
+		"Formatting disk with XFS",
+		"Generating hardware configuration",
+		"Installing NixOS",
+		"Copying flake to new system",
+		"Setting up user flake",
+		"Copying install log",
+	}
 }
 
 func tick() tea.Cmd {
@@ -1584,64 +1872,87 @@ func runCommand(name string, args ...string) (string, error) {
 func runInstallation(c Config) tea.Cmd {
 	return func() tea.Msg {
 		logInfo("=== Starting installation ===")
-		logInfo("Config: Username=%s, Hostname=%s, Disk=%s", c.Username, c.Hostname, c.Disk)
+		logInfo("Config: Username=%s, Hostname=%s, Disk=%s, StorageMode=%s", c.Username, c.Hostname, c.Disk, c.StorageMode)
+		if c.StorageMode.isMultiDisk() {
+			logInfo("Config: Disks=%v", c.Disks)
+		}
 		logInfo("Config: ProjectRoot=%s, WorkDir=%s", c.ProjectRoot, c.WorkDir)
 
-		logInfo("Step 1: Generating host configuration...")
+		step := 0
+
+		logInfo("Step %d: Generating host configuration...", step+1)
 		if err := generateHostConfig(c); err != nil {
 			logError("generateHostConfig failed: %v", err)
 			return installErrMsg{err: fmt.Errorf("generate host config: %w", err)}
 		}
-		logInfo("Step 1 complete")
+		step++
+		logInfo("Step %d complete", step)
 
-		logInfo("Step 2: Formatting disk...")
+		logInfo("Step %d: Formatting disk(s)...", step+1)
 		if err := formatDisk(c); err != nil {
 			logError("formatDisk failed: %v", err)
 			return installErrMsg{err: fmt.Errorf("format disk: %w", err)}
 		}
-		logInfo("Step 2 complete")
+		step++
+		logInfo("Step %d complete", step)
 
-		logInfo("Step 3: Generating hardware config...")
+		logInfo("Step %d: Generating hardware config...", step+1)
 		if err := generateHardwareConfig(c); err != nil {
 			logError("generateHardwareConfig failed: %v", err)
 			return installErrMsg{err: fmt.Errorf("generate hardware config: %w", err)}
 		}
-		logInfo("Step 3 complete")
+		step++
+		logInfo("Step %d complete", step)
 
-		logInfo("Step 4: Installing NixOS...")
+		logInfo("Step %d: Installing NixOS...", step+1)
 		if err := installNixOS(c); err != nil {
 			logError("installNixOS failed: %v", err)
 			return installErrMsg{err: fmt.Errorf("install nixos: %w", err)}
 		}
-		logInfo("Step 4 complete")
+		step++
+		logInfo("Step %d complete", step)
 
-		logInfo("Step 5: Configuring ZFS boot...")
-		if err := configureZFSBoot(c); err != nil {
-			logError("configureZFSBoot failed: %v", err)
-			return installErrMsg{err: fmt.Errorf("configure zfs boot: %w", err)}
+		if c.StorageMode.isZFS() {
+			logInfo("Step %d: Configuring ZFS boot...", step+1)
+			if err := configureZFSBoot(c); err != nil {
+				logError("configureZFSBoot failed: %v", err)
+				return installErrMsg{err: fmt.Errorf("configure zfs boot: %w", err)}
+			}
+			step++
+			logInfo("Step %d complete", step)
 		}
-		logInfo("Step 5 complete")
 
-		logInfo("Step 6: Copying flake...")
+		logInfo("Step %d: Copying flake...", step+1)
 		if err := copyFlake(c); err != nil {
 			logError("copyFlake failed: %v", err)
 			return installErrMsg{err: fmt.Errorf("copy flake: %w", err)}
 		}
-		logInfo("Step 6 complete")
+		step++
+		logInfo("Step %d complete", step)
 
-		logInfo("Step 7: Setting up user flake...")
+		logInfo("Step %d: Setting up user flake...", step+1)
 		if err := setupUserFlake(c); err != nil {
 			logError("setupUserFlake failed: %v", err)
 			return installErrMsg{err: fmt.Errorf("setup user flake: %w", err)}
 		}
-		logInfo("Step 7 complete")
+		step++
+		logInfo("Step %d complete", step)
 
-		logInfo("Step 8: Finalizing ZFS pool...")
-		if err := finalizeZFSPool(c); err != nil {
-			logError("finalizeZFSPool failed: %v", err)
-			return installErrMsg{err: fmt.Errorf("finalize zfs pool: %w", err)}
+		// Copy install log while /mnt is still mounted (before finalization unmounts it)
+		logInfo("Step %d: Copying install log...", step+1)
+		copyInstallLog(c)
+		step++
+		logInfo("Step %d complete", step)
+
+		if c.StorageMode.isZFS() {
+			logInfo("Step %d: Finalizing ZFS pool...", step+1)
+			if err := finalizeZFSPool(c); err != nil {
+				logError("finalizeZFSPool failed: %v", err)
+				return installErrMsg{err: fmt.Errorf("finalize zfs pool: %w", err)}
+			}
+			step++
+			logInfo("Step %d complete", step)
 		}
-		logInfo("Step 8 complete")
 
 		logInfo("=== Installation complete ===")
 		return installDoneMsg{}
@@ -1734,6 +2045,15 @@ func generateHostConfig(c Config) error {
 		return fmt.Errorf("write user nix: %w", err)
 	}
 
+	// Generate default.nix with conditional ZFS settings
+	var zfsConfig string
+	if c.StorageMode.isZFS() {
+		zfsConfig = `  tuinix.zfs.enable = true;
+  tuinix.zfs.encryption = ` + fmt.Sprintf("%v", c.StorageMode.isEncrypted()) + `;`
+	} else {
+		zfsConfig = `  tuinix.zfs.enable = false;`
+	}
+
 	defaultNix := fmt.Sprintf(`{ config, lib, pkgs, inputs, hostname, ... }:
 
 {
@@ -1752,8 +2072,7 @@ func generateHostConfig(c Config) error {
     git
   ];
 
-  tuinix.zfs.enable = true;
-  tuinix.zfs.encryption = true;
+%s
 
   boot.consoleLogLevel = 3;
 
@@ -1761,63 +2080,219 @@ func generateHostConfig(c Config) error {
   services.xserver.xkb.layout = "%s";
   console.keyMap = "%s";
 }
-`, c.Username, c.Locale, c.Keymap, c.ConsoleKeyMap)
+`, c.Username, zfsConfig, c.Locale, c.Keymap, c.ConsoleKeyMap)
 
 	if err := os.WriteFile(filepath.Join(hostDir, "default.nix"), []byte(defaultNix), 0644); err != nil {
 		return fmt.Errorf("write default.nix: %w", err)
 	}
 
-	templateFile := filepath.Join(workDir, "templates", "disko-template.nix")
-	templateContent, err := os.ReadFile(templateFile)
-	if err != nil {
-		return fmt.Errorf("read disko template: %w", err)
-	}
+	// Generate disko configuration based on storage mode
+	var disksContent string
+	switch c.StorageMode {
+	case storageXFS:
+		templateFile := filepath.Join(workDir, "templates", "disko-xfs.nix")
+		templateBytes, err := os.ReadFile(templateFile)
+		if err != nil {
+			return fmt.Errorf("read xfs disko template: %w", err)
+		}
+		disksContent = string(templateBytes)
+		disksContent = strings.ReplaceAll(disksContent, "{{DISK_DEVICE}}", c.Disk)
+		disksContent = strings.ReplaceAll(disksContent, "{{SPACE_BOOT}}", c.SpaceBoot)
 
-	disksContent := string(templateContent)
-	disksContent = strings.ReplaceAll(disksContent, "{{DISK_DEVICE}}", c.Disk)
-	disksContent = strings.ReplaceAll(disksContent, "{{HOSTNAME}}", c.Hostname)
-	disksContent = strings.ReplaceAll(disksContent, "{{SPACE_BOOT}}", c.SpaceBoot)
-	disksContent = strings.ReplaceAll(disksContent, "{{SPACE_NIX}}", c.SpaceNix)
-	disksContent = strings.ReplaceAll(disksContent, "{{SPACE_ATUIN}}", c.SpaceAtuin)
-	disksContent = strings.ReplaceAll(disksContent, "{{ZFS_POOL_NAME}}", c.ZFSPoolName)
+	case storageZFSEncryptedSingle:
+		templateFile := filepath.Join(workDir, "templates", "disko-template.nix")
+		templateBytes, err := os.ReadFile(templateFile)
+		if err != nil {
+			return fmt.Errorf("read zfs disko template: %w", err)
+		}
+		disksContent = string(templateBytes)
+		disksContent = strings.ReplaceAll(disksContent, "{{DISK_DEVICE}}", c.Disk)
+		disksContent = strings.ReplaceAll(disksContent, "{{HOSTNAME}}", c.Hostname)
+		disksContent = strings.ReplaceAll(disksContent, "{{SPACE_BOOT}}", c.SpaceBoot)
+		disksContent = strings.ReplaceAll(disksContent, "{{SPACE_NIX}}", c.SpaceNix)
+		disksContent = strings.ReplaceAll(disksContent, "{{SPACE_ATUIN}}", c.SpaceAtuin)
+		disksContent = strings.ReplaceAll(disksContent, "{{ZFS_POOL_NAME}}", c.ZFSPoolName)
+
+	case storageZFSStripe, storageZFSRaidz, storageZFSRaidz2:
+		disksContent = generateMultiDiskDiskoConfig(c)
+	}
 
 	if err := os.WriteFile(filepath.Join(hostDir, "disks.nix"), []byte(disksContent), 0644); err != nil {
 		return fmt.Errorf("write disks.nix: %w", err)
 	}
 
-	hardwareNix := fmt.Sprintf(`{ config, lib, pkgs, modulesPath, ... }:
-
-{
-  networking.hostId = "%s";
-  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
-
-  boot = {
-    initrd = {
-      availableKernelModules = [
-        "ahci" "xhci_pci" "virtio_pci" "virtio_scsi"
-        "sd_mod" "sr_mod" "nvme" "ehci_pci" "usbhid"
-        "usb_storage" "sdhci_pci"
-      ];
-      kernelModules = [ ];
-    };
-    kernelModules = [ "kvm-intel" "kvm-amd" ];
-    extraModulePackages = [ ];
-  };
-
-  hardware = {
-    enableAllFirmware = true;
-    cpu.intel.updateMicrocode = lib.mkDefault true;
-  };
-
-  powerManagement.cpuFreqGovernor = lib.mkDefault "powersave";
-}
-`, c.HostID)
-
-	if err := os.WriteFile(filepath.Join(hostDir, "hardware.nix"), []byte(hardwareNix), 0644); err != nil {
-		return fmt.Errorf("write hardware.nix: %w", err)
-	}
+	// hardware.nix is generated later by generateHardwareConfig() after disk formatting,
+	// which runs nixos-generate-config to detect actual hardware
 
 	return nil
+}
+
+// generateMultiDiskDiskoConfig creates a disko configuration for multi-disk ZFS setups
+func generateMultiDiskDiskoConfig(c Config) string {
+	poolName := c.ZFSPoolName
+
+	// Determine ZFS pool mode
+	// In disko, mode = "" means stripe (no redundancy), "raidz" and "raidz2" for parity modes
+	var zfsMode string
+	switch c.StorageMode {
+	case storageZFSStripe:
+		zfsMode = `""`
+	case storageZFSRaidz:
+		zfsMode = `"raidz"`
+	case storageZFSRaidz2:
+		zfsMode = `"raidz2"`
+	}
+
+	// Generate disk entries - first disk gets ESP + ZFS, rest get ZFS only
+	var diskEntries strings.Builder
+	for i, disk := range c.Disks {
+		name := fmt.Sprintf("disk%d", i)
+		if i == 0 {
+			// First disk: ESP boot partition + ZFS partition
+			diskEntries.WriteString(fmt.Sprintf(`      %s = {
+        type = "disk";
+        device = "%s";
+        content = {
+          type = "gpt";
+          partitions = {
+            ESP = {
+              type = "EF00";
+              size = "%s";
+              content = {
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot";
+                mountOptions = [ "umask=0077" ];
+              };
+            };
+            zfs = {
+              size = "100%%";
+              content = {
+                type = "zfs";
+                pool = "%s";
+              };
+            };
+          };
+        };
+      };
+`, name, disk, c.SpaceBoot, poolName))
+		} else {
+			// Additional disks: entire disk is ZFS
+			diskEntries.WriteString(fmt.Sprintf(`      %s = {
+        type = "disk";
+        device = "%s";
+        content = {
+          type = "gpt";
+          partitions = {
+            zfs = {
+              size = "100%%";
+              content = {
+                type = "zfs";
+                pool = "%s";
+              };
+            };
+          };
+        };
+      };
+`, name, disk, poolName))
+		}
+	}
+
+	return fmt.Sprintf(`# Disko configuration for tuinix - multi-disk ZFS (%s)
+# Generated by tuinix installer
+
+{ lib, ... }:
+{
+  disko.devices = {
+    disk = {
+%s    };
+
+    zpool = {
+      "%s" = {
+        type = "zpool";
+        mode = %s;
+        options = {
+          ashift = "12";
+          autotrim = "on";
+        };
+        rootFsOptions = {
+          compression = "zstd";
+          acltype = "posixacl";
+          xattr = "sa";
+          relatime = "on";
+          mountpoint = "none";
+          encryption = "aes-256-gcm";
+          keyformat = "passphrase";
+          keylocation = "prompt";
+          "com.sun:auto-snapshot" = "false";
+        };
+
+        datasets = {
+          "root" = {
+            type = "zfs_fs";
+            mountpoint = "/";
+            options = {
+              "com.sun:auto-snapshot" = "false";
+              mountpoint = "/";
+            };
+            postCreateHook = ''
+              zfs snapshot %s/root@blank
+            '';
+          };
+
+          "nix" = {
+            type = "zfs_fs";
+            mountpoint = "/nix";
+            options = {
+              "com.sun:auto-snapshot" = "false";
+              quota = "%s";
+            };
+          };
+
+          "home" = {
+            type = "zfs_fs";
+            mountpoint = "/home";
+            options = { "com.sun:auto-snapshot" = "true"; };
+          };
+
+          "overflow" = {
+            type = "zfs_fs";
+            mountpoint = "/overflow";
+            options = { "com.sun:auto-snapshot" = "true"; };
+          };
+
+          "atuin" = {
+            type = "zfs_volume";
+            size = "%s";
+            content = {
+              type = "filesystem";
+              format = "xfs";
+              mountpoint = "/var/atuin";
+              mountOptions = [ "defaults" "nofail" ];
+            };
+          };
+        };
+      };
+    };
+  };
+}
+`, c.StorageMode, diskEntries.String(), poolName, zfsMode,
+		poolName, c.SpaceNix, c.SpaceAtuin)
+}
+
+// copyInstallLog copies the install log to the user's home directory on the new system
+func copyInstallLog(c Config) {
+	targetDir := fmt.Sprintf("/mnt/home/%s", c.Username)
+	targetFile := filepath.Join(targetDir, "tuinix-install.log")
+	logInfo("Copying install log from %s to %s", logFile, targetFile)
+
+	if _, err := runCommand("cp", logFile, targetFile); err != nil {
+		logError("Failed to copy install log: %v", err)
+		return
+	}
+	// Set ownership to the user
+	runCommand("chown", "1000:100", targetFile)
+	logInfo("Install log copied successfully")
 }
 
 func formatDisk(c Config) error {
@@ -1835,35 +2310,47 @@ func formatDisk(c Config) error {
 	diskoContent, _ := os.ReadFile(diskoConfig)
 	logInfo("formatDisk: disks.nix contents:\n%s", string(diskoContent))
 
-	logInfo("formatDisk: removing /etc/hostid")
-	os.Remove("/etc/hostid")
+	if c.StorageMode.isZFS() {
+		logInfo("formatDisk: removing /etc/hostid")
+		os.Remove("/etc/hostid")
 
-	logInfo("formatDisk: running zgenhostid %s", c.HostID)
-	if _, err := runCommand("zgenhostid", c.HostID); err != nil {
-		return fmt.Errorf("zgenhostid: %w", err)
-	}
-
-	logInfo("formatDisk: unmounting partitions on %s", c.Disk)
-	lsblkOutput, _ := runCommand("lsblk", "-nr", "-o", "NAME", c.Disk)
-	partitions := strings.Split(lsblkOutput, "\n")
-	for i, part := range partitions {
-		if i == 0 || part == "" {
-			continue
+		logInfo("formatDisk: running zgenhostid %s", c.HostID)
+		if _, err := runCommand("zgenhostid", c.HostID); err != nil {
+			return fmt.Errorf("zgenhostid: %w", err)
 		}
-		partPath := "/dev/" + strings.TrimSpace(part)
-		logInfo("formatDisk: unmounting %s", partPath)
-		runCommand("umount", partPath)
 	}
 
-	logInfo("formatDisk: exporting all zpools")
-	runCommand("zpool", "export", "-a")
+	// Unmount partitions on all target disks
+	for _, disk := range c.Disks {
+		logInfo("formatDisk: unmounting partitions on %s", disk)
+		lsblkOutput, _ := runCommand("lsblk", "-nr", "-o", "NAME", disk)
+		partitions := strings.Split(lsblkOutput, "\n")
+		for i, part := range partitions {
+			if i == 0 || part == "" {
+				continue
+			}
+			partPath := "/dev/" + strings.TrimSpace(part)
+			logInfo("formatDisk: unmounting %s", partPath)
+			runCommand("umount", partPath)
+		}
+	}
 
-	logInfo("formatDisk: running disko --mode disko %s (piping passphrase for ZFS encryption)", diskoConfig)
-	// Pipe the passphrase to disko's stdin for ZFS encryption
-	// ZFS prompts for passphrase twice (enter + confirm), so we send it twice
+	if c.StorageMode.isZFS() {
+		logInfo("formatDisk: exporting all zpools")
+		runCommand("zpool", "export", "-a")
+	}
+
+	logInfo("formatDisk: running disko --mode disko %s", diskoConfig)
 	diskoCmd := exec.Command("disko", "--mode", "disko", diskoConfig)
-	passInput := c.Passphrase + "\n" + c.Passphrase + "\n"
-	diskoCmd.Stdin = strings.NewReader(passInput)
+
+	if c.StorageMode.isEncrypted() {
+		// Pipe the passphrase to disko's stdin for ZFS encryption
+		// ZFS prompts for passphrase twice (enter + confirm), so we send it twice
+		logInfo("formatDisk: piping passphrase for ZFS encryption")
+		passInput := c.Passphrase + "\n" + c.Passphrase + "\n"
+		diskoCmd.Stdin = strings.NewReader(passInput)
+	}
+
 	var diskoOut, diskoErr bytes.Buffer
 	diskoCmd.Stdout = &diskoOut
 	diskoCmd.Stderr = &diskoErr
@@ -1884,18 +2371,34 @@ func generateHardwareConfig(c Config) error {
 		return fmt.Errorf("nixos-generate-config: %w", err)
 	}
 
-	hardwareNix := fmt.Sprintf(`{ config, lib, pkgs, modulesPath, ... }:
+	var zfsBootSection string
+	var zfsScrubSection string
+	var hostIdLine string
 
-{
-  networking.hostId = "%s";
-  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
-
+	if c.StorageMode.isZFS() {
+		hostIdLine = fmt.Sprintf(`  networking.hostId = "%s";`, c.HostID)
+		zfsBootSection = fmt.Sprintf(`
   boot = {
     supportedFilesystems = [ "zfs" ];
     zfs = {
-      requestEncryptionCredentials = true;
+      requestEncryptionCredentials = %v;
       forceImportRoot = true;
-    };
+    };`, c.StorageMode.isEncrypted())
+		zfsScrubSection = `
+  services.zfs.autoScrub.enable = true;`
+	} else {
+		hostIdLine = ""
+		zfsBootSection = `
+  boot = {`
+		zfsScrubSection = ""
+	}
+
+	hardwareNix := fmt.Sprintf(`{ config, lib, pkgs, modulesPath, ... }:
+
+{
+%s
+  imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
+%s
     initrd = {
       availableKernelModules = [
         "ahci" "xhci_pci" "virtio_pci" "virtio_blk" "virtio_scsi"
@@ -1913,10 +2416,9 @@ func generateHardwareConfig(c Config) error {
     cpu.intel.updateMicrocode = lib.mkDefault true;
   };
 
-  powerManagement.cpuFreqGovernor = lib.mkDefault "powersave";
-  services.zfs.autoScrub.enable = true;
+  powerManagement.cpuFreqGovernor = lib.mkDefault "powersave";%s
 }
-`, c.HostID)
+`, hostIdLine, zfsBootSection, zfsScrubSection)
 
 	if err := os.WriteFile(filepath.Join(hostDir, "hardware.nix"), []byte(hardwareNix), 0644); err != nil {
 		return fmt.Errorf("write hardware.nix: %w", err)

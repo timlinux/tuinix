@@ -13,8 +13,8 @@ This guide covers installing tuinix on a real physical machine.
 
 !!! warning "UEFI and Secure Boot"
     tuinix requires UEFI boot. Legacy BIOS is not supported.
-    Secure Boot must be disabled because ZFS kernel modules
-    are unsigned.
+    Secure Boot must be disabled when using ZFS because ZFS kernel
+    modules are unsigned.
 
 ## Step 1: Get the ISO
 
@@ -86,36 +86,106 @@ The interactive TUI installer will guide you through:
 3. **Email** -- your email address (used in git config)
 4. **Password** -- set your login password (entered twice to confirm)
 5. **Hostname** -- name your machine
-6. **Disk selection** -- choose the target disk (the installer shows all available disks)
-7. **ZFS encryption passphrase** -- set a passphrase for full-disk encryption (entered twice to confirm)
-8. **Locale and keyboard** -- select your region and layout
-9. **Confirmation** -- review the summary, type `DESTROY` to confirm
-10. **Installation** -- partitioning, formatting, and NixOS install run automatically
+6. **Storage mode** -- choose your disk layout strategy (see [Storage Modes](#storage-modes) below)
+7. **Disk selection** -- choose the target disk(s)
+8. **ZFS encryption passphrase** -- set a passphrase for full-disk encryption (skipped for XFS mode)
+9. **Locale and keyboard** -- select your region and layout
+10. **Confirmation** -- review the summary, type `DESTROY` to confirm
+11. **Installation** -- partitioning, formatting, and NixOS install run automatically
+
+## Storage Modes
+
+The installer supports five storage modes:
+
+### Encrypted ZFS (single disk) -- recommended
+
+The default and most common option. A single disk is partitioned with an EFI boot partition
+and an encrypted ZFS pool. All data is protected with AES-256-GCM encryption and you get
+ZFS features like compression (zstd), snapshots, and data integrity checking.
+
+### XFS unencrypted (single disk) -- maximum performance
+
+A single disk with an EFI boot partition and an XFS root partition. No encryption, no ZFS
+overhead. This gives maximum raw I/O performance and uses the latest available kernel
+(not constrained by ZFS compatibility). Choose this when performance matters more than
+encryption or ZFS features.
+
+### Encrypted ZFS stripe (multi-disk) -- combined space
+
+Two or more disks are combined into a single encrypted ZFS pool with no redundancy
+(like RAID0). You get the sum of all disk capacities. If any disk fails, all data is lost.
+Use this when you need maximum space from multiple disks and have a backup strategy.
+
+### Encrypted ZFS raidz (multi-disk) -- 1-disk fault tolerance
+
+Three or more disks in a raidz configuration (like RAID5). One disk's worth of space is
+used for parity, the rest is usable. Any single disk can fail and be replaced without data
+loss. This is a good balance of space efficiency and safety.
+
+### Encrypted ZFS raidz2 (multi-disk) -- 2-disk fault tolerance
+
+Four or more disks in a raidz2 configuration (like RAID6). Two disks' worth of space is
+used for parity. Any two disks can fail simultaneously without data loss. Use this for
+critical data that needs maximum redundancy.
+
+!!! tip "Multi-disk selection"
+    For multi-disk modes, use **Space** to toggle each disk on/off and **Enter** to confirm
+    your selection. The first selected disk will host the EFI boot partition.
 
 ## Step 5: First boot
 
 1. Remove the USB drive
 2. Reboot
 3. At the GRUB menu, select tuinix
-4. Enter your ZFS encryption passphrase when prompted
+4. If using an encrypted ZFS mode, enter your encryption passphrase when prompted
 5. Log in with the username and password you set during installation
 
 ## Disk layout
 
-The installer creates this partition layout:
+The installer creates one of these layouts depending on the chosen storage mode:
+
+### Encrypted ZFS (single disk)
 
 | Partition | Size | Filesystem | Purpose |
 |-----------|------|------------|---------|
-| ESP | 512 MB | FAT32 | EFI System Partition (`/boot`) |
+| ESP | 5 GB | FAT32 | EFI System Partition (`/boot`) |
 | ZFS | Remainder | ZFS (encrypted) | Root pool `NIXROOT` |
 
 ZFS datasets created:
 
 | Dataset | Mountpoint | Notes |
 |---------|------------|-------|
-| `NIXROOT/root` | `/` | Root filesystem |
-| `NIXROOT/nix` | `/nix` | Nix store |
-| `NIXROOT/home` | `/home` | User data |
+| `NIXROOT/root` | `/` | Root filesystem (blank snapshot taken) |
+| `NIXROOT/nix` | `/nix` | Nix store (5% of disk, min 20 GB) |
+| `NIXROOT/home` | `/home` | User data (snapshots enabled) |
+| `NIXROOT/overflow` | `/overflow` | Extra storage (snapshots enabled) |
+| `NIXROOT/atuin` | `/var/atuin` | Shell history (XFS zvol) |
+
+### XFS unencrypted (single disk)
+
+| Partition | Size | Filesystem | Purpose |
+|-----------|------|------------|---------|
+| ESP | 5 GB | FAT32 | EFI System Partition (`/boot`) |
+| Root | Remainder | XFS | Root filesystem (`/`) |
+
+### Multi-disk ZFS (stripe, raidz, raidz2)
+
+The first disk gets an EFI boot partition; all disks contribute a ZFS partition to the pool.
+
+| Component | Description |
+|-----------|-------------|
+| ESP (disk 0 only) | 5 GB FAT32 EFI boot partition |
+| ZFS partitions | One per disk, combined into a single encrypted pool |
+
+The pool mode determines redundancy:
+
+| Mode | Usable space (N disks) | Fault tolerance |
+|------|----------------------|-----------------|
+| Stripe | N disks | None |
+| Raidz | N-1 disks | 1 disk failure |
+| Raidz2 | N-2 disks | 2 disk failures |
+
+ZFS datasets are the same as the single-disk encrypted ZFS layout.
 
 ## Post-installation
 
@@ -148,25 +218,50 @@ sudo nixos-rebuild switch --flake .#<hostname>
 
 See the [Post-Install Guide](../usage/post-install.md) for more about your new environment.
 
+## Install log
+
+The installer writes a detailed log to `/tmp/tuinix-install.log` during installation.
+This log is automatically copied to your home directory (`/home/<username>/tuinix-install.log`)
+so it persists after the first reboot. Check this log if you encounter any issues.
+
 ## Recovery
 
 If your system won't boot:
 
-1. Boot from the installation USB again
-2. Import and unlock your ZFS pool:
-   ```bash
-   sudo zpool import -f NIXROOT
-   sudo zfs load-key -a
-   sudo zfs mount -a
-   ```
-3. Chroot in:
-   ```bash
-   sudo nixos-enter --root /mnt
-   ```
-4. Fix and rebuild:
-   ```bash
-   nixos-rebuild boot --flake /etc/tuinix#<hostname>
-   ```
+=== "ZFS installs"
+
+    1. Boot from the installation USB again
+    2. Import and unlock your ZFS pool:
+       ```bash
+       sudo zpool import -f NIXROOT
+       sudo zfs load-key -a
+       sudo zfs mount -a
+       ```
+    3. Chroot in:
+       ```bash
+       sudo nixos-enter --root /mnt
+       ```
+    4. Fix and rebuild:
+       ```bash
+       nixos-rebuild boot --flake /etc/tuinix#<hostname>
+       ```
+
+=== "XFS installs"
+
+    1. Boot from the installation USB again
+    2. Mount your root partition:
+       ```bash
+       sudo mount /dev/sdX2 /mnt
+       sudo mount /dev/sdX1 /mnt/boot
+       ```
+    3. Chroot in:
+       ```bash
+       sudo nixos-enter --root /mnt
+       ```
+    4. Fix and rebuild:
+       ```bash
+       nixos-rebuild boot --flake /etc/tuinix#<hostname>
+       ```
 
 ## Troubleshooting
 

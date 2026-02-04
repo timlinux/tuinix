@@ -810,3 +810,30 @@ Brand colors used:
 - Added catimg to ISO packages and LOGO.png to ISO contents in installer.nix
 - Built ISO successfully (812M, all validations passed)
 - User requested: big version as splash screen on boot, centered on screen, instructions below
+
+=== 2026-02-04 ===
+PROMPT: at the end of the install process, copy the install log into the user's home directory so that it persists after their first reboot.
+
+during the installation we use disko to configure the users disk with zfs and zfs encryption. I would like to support additional scenarions:
+
+no zfs, using xfs unencrypted set up for maximum performance
+
+encrypted zfs with multiple devices fused to a single pool to realise the sum of all of their space
+
+encrypted zfs with multiple devices with redundancy so that any single device can be replaced with no loss of data.
+
+Update the installer to generate the correct disko configuration according to these requirements and then go ahead with the installation
+
+RESPONSE: Implemented 5 storage modes in the TUI installer:
+1. Encrypted ZFS (single disk) - original behavior
+2. XFS unencrypted (single disk) - max performance, latest kernel
+3. Encrypted ZFS stripe (multi-disk) - combined space, no redundancy
+4. Encrypted ZFS raidz (multi-disk) - 1-disk fault tolerance (min 3 disks)
+5. Encrypted ZFS raidz2 (multi-disk) - 2-disk fault tolerance (min 4 disks)
+
+Changes made:
+- cmd/installer/main.go: Added storageMode type, stateStorageMode and stateDiskMulti states, multi-disk selection with space toggle, conditional passphrase flow, dynamic disko config generation for multi-disk, install log copy to user home, updated all installation functions for conditional ZFS/XFS paths
+- templates/disko-xfs.nix: New XFS single-disk disko template
+- modules/system/boot.nix: Conditional zfsSupport and kernel selection (latest kernel for XFS, ZFS-compatible for ZFS)
+- installer.nix: Added xfsprogs to ISO packages
+- docs/installation/bare-metal.md: Full documentation of all 5 storage modes, disk layouts, recovery procedures

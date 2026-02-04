@@ -10,15 +10,18 @@
         device = "nodev";
         efiInstallAsRemovable = true;
         efiSupport = true;
-        zfsSupport = true;
+        zfsSupport = lib.mkDefault config.tuinix.zfs.enable;
         useOSProber = true;
         configurationLimit = 10;
       };
       timeout = 5;
     };
 
-    # Kernel configuration - use latest ZFS-compatible kernel
-    kernelPackages = config.boot.zfs.package.latestCompatibleLinuxPackages;
+    # Kernel configuration - use latest ZFS-compatible kernel when ZFS is enabled,
+    # otherwise use the default latest kernel for maximum performance
+    kernelPackages = if config.tuinix.zfs.enable
+      then config.boot.zfs.package.latestCompatibleLinuxPackages
+      else pkgs.linuxPackages_latest;
 
     # Clean /tmp on boot
     tmp.cleanOnBoot = true;
