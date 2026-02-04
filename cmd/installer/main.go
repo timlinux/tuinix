@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -180,6 +181,7 @@ const (
 	stateFireTransition installState = iota
 	stateSplash
 	stateGravityOut
+	stateNetworkCheck
 	stateUsername
 	stateFullname
 	stateEmail
@@ -523,10 +525,14 @@ type model struct {
 	animDone      bool
 	prevContent   string
 
+	// Network check
+	networkOk bool
+
 	// Installation progress
 	installLog  []string
 	installStep int
 	installErr  error
+	logTail     []string // Last 3 lines from install log for live display
 }
 
 // Messages
@@ -538,6 +544,12 @@ type installStepMsg struct {
 type installDoneMsg struct{}
 type installErrMsg struct {
 	err error
+}
+type networkCheckMsg struct {
+	ok bool
+}
+type logTailMsg struct {
+	lines []string
 }
 
 func initialModel() model {
@@ -675,7 +687,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "q":
-			if m.state != stateInstalling && m.state != stateFireTransition && m.state != stateGravityOut && m.state != stateSplash {
+			// Only allow q to quit on non-input screens (splash, disk selection, locale, keymap, summary, complete, error)
+			// Text input states must pass q through to the input field
+			switch m.state {
+			case stateSplash, stateNetworkCheck, stateDisk, stateDiskMulti, stateLocale, stateKeymap, stateSummary, stateStorageMode, stateComplete, stateError:
 				return m, tea.Quit
 			}
 		case "enter":
@@ -728,6 +743,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case installErrMsg:
 		m.installErr = msg.err
 		m.state = stateError
+		return m, nil
+
+	case networkCheckMsg:
+		m.networkOk = msg.ok
+		if msg.ok {
+			m.state = stateUsername
+			m.input.Placeholder = "e.g., john, alice"
+			m.input.SetValue("")
+		}
+		return m, tick()
+
+	case logTailMsg:
+		m.logTail = msg.lines
+		if m.state == stateInstalling {
+			return m, pollLogTail()
+		}
 		return m, nil
 	}
 
@@ -782,7 +813,7 @@ func (m model) handleTick() (tea.Model, tea.Cmd) {
 		if m.animTick > 60 {
 			m.prevContent = m.viewSplash()
 			m.initGravityChars(m.prevContent)
-			m.nextState = stateUsername
+			m.nextState = stateNetworkCheck
 			m.state = stateGravityOut
 			m.animTick = 0
 			m.input.Placeholder = "e.g., john, alice"
@@ -823,8 +854,14 @@ func (m model) handleTick() (tea.Model, tea.Cmd) {
 		}
 		return m, tick()
 
-	case stateInstalling:
+	case stateNetworkCheck:
+		if m.animTick == 1 {
+			return m, checkNetwork()
+		}
 		return m, tick()
+
+	case stateInstalling:
+		return m, tea.Batch(tick(), pollLogTail())
 	}
 
 	return m, nil
@@ -832,6 +869,17 @@ func (m model) handleTick() (tea.Model, tea.Cmd) {
 
 func (m model) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.state {
+	case stateNetworkCheck:
+		if m.networkOk {
+			m.state = stateUsername
+			m.input.Placeholder = "e.g., john, alice"
+			m.input.SetValue("")
+			return m, nil
+		}
+		// Retry network check
+		m.animTick = 0
+		return m, tick()
+
 	case stateUsername:
 		val := strings.TrimSpace(m.input.Value())
 		if !isValidUsername(val) {
@@ -1034,6 +1082,8 @@ func (m model) View() string {
 		return m.viewSplash()
 	case stateGravityOut:
 		return m.viewGravityAnimation()
+	case stateNetworkCheck:
+		return m.viewNetworkCheck()
 	case stateInstalling:
 		return m.viewInstalling()
 	case stateComplete:
@@ -1537,6 +1587,26 @@ func (m model) viewInstalling() string {
 		errText = errorStyle.Render("\nError: " + m.installErr.Error())
 	}
 
+	// Log tail display - show last 3 lines from install log
+	var logTailDisplay string
+	if len(m.logTail) > 0 {
+		logBox := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(colorDarkGray).
+			Foreground(colorDimGray).
+			Width(m.width - 8).
+			Padding(0, 1)
+		var tailLines []string
+		for _, l := range m.logTail {
+			// Truncate long lines to fit the box
+			if len(l) > m.width-12 {
+				l = l[:m.width-12] + "..."
+			}
+			tailLines = append(tailLines, l)
+		}
+		logTailDisplay = logBox.Render(strings.Join(tailLines, "\n"))
+	}
+
 	progress := detailStyle.Copy().
 		Align(lipgloss.Center).
 		Width(m.width - 4).
@@ -1552,6 +1622,8 @@ func (m model) viewInstalling() string {
 		"",
 		stepList.String(),
 		errText,
+		"",
+		logTailDisplay,
 		"",
 		progress,
 		"",
@@ -1843,6 +1915,80 @@ func tick() tea.Cmd {
 	return tea.Tick(time.Millisecond*33, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
+}
+
+func checkNetwork() tea.Cmd {
+	return func() tea.Msg {
+		conn, err := net.DialTimeout("tcp", "github.com:443", 5*time.Second)
+		if err != nil {
+			return networkCheckMsg{ok: false}
+		}
+		conn.Close()
+		return networkCheckMsg{ok: true}
+	}
+}
+
+func pollLogTail() tea.Cmd {
+	return func() tea.Msg {
+		time.Sleep(time.Second)
+		data, err := os.ReadFile(logFile)
+		if err != nil {
+			return logTailMsg{lines: nil}
+		}
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		start := len(lines) - 3
+		if start < 0 {
+			start = 0
+		}
+		return logTailMsg{lines: lines[start:]}
+	}
+}
+
+func (m model) viewNetworkCheck() string {
+	header := m.renderHeader()
+	line := m.renderHorizontalLine()
+
+	title := titleStyle.Copy().
+		Align(lipgloss.Center).
+		Width(m.width - 4).
+		Render("Network Connectivity")
+
+	var status string
+	if m.networkOk {
+		status = successStyle.Render("Connected to the internet.")
+		status += "\n\n" + grayStyle.Render("Press Enter to continue")
+	} else {
+		spinChars := []string{"|", "/", "-", "\\"}
+		spin := spinChars[m.animTick%len(spinChars)]
+
+		status = warningStyle.Render("["+spin+"] Checking network connectivity...")
+		if m.animTick > 5 {
+			// Check already returned failure
+			status = errorStyle.Render("No internet connection detected.") +
+				"\n\n" + lipgloss.NewStyle().Foreground(colorOffWhite).Render(
+				"An internet connection is required during installation.\n"+
+					"Press q to exit the installer, then configure your network:\n\n"+
+					"  Wired:  Should connect automatically via DHCP\n"+
+					"  WiFi:   Use wpa_cli or iwctl to connect\n\n"+
+					"Then run sudo installer again.") +
+				"\n\n" + grayStyle.Render("Press Enter to retry | q to exit")
+		}
+	}
+
+	footer := m.renderFooter()
+
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		header,
+		line,
+		"",
+		title,
+		"",
+		status,
+		"",
+		footer,
+	)
+
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 }
 
 func runCommand(name string, args ...string) (string, error) {
