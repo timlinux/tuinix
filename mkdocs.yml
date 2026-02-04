@@ -54,9 +54,9 @@ plugins:
 
 extra:
   iso:
-    version: "v0.1.0"
-    filename: "nixos-minimal-26.05.20251205.f61125a-x86_64-linux.iso"
-    download_url: "https://github.com/timlinux/tuinix/releases/download/v0.1.0/nixos-minimal-26.05.20251205.f61125a-x86_64-linux.iso"
+    version: "v0.2.0"
+    filename: "tuinix.v0.2.0.iso"
+    download_url: "https://github.com/timlinux/tuinix/releases/download/v0.2.0/tuinix.v0.2.0.iso"
     releases_url: "https://github.com/timlinux/tuinix/releases/latest"
   social:
     - icon: fontawesome/brands/github

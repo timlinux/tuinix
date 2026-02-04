@@ -6,8 +6,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# Version for ISO naming
-VERSION="${TUINIX_VERSION:-v1}"
+# Version for ISO naming - defaults to latest git tag or 'dev'
+VERSION="${TUINIX_VERSION:-$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")}"
 
 # Check if gum is available
 if ! command -v gum >/dev/null 2>&1; then
