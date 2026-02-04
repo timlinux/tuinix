@@ -1,6 +1,6 @@
 tuinix Build Information
 ==============================
-Version: v0.1.0-7-gbc659a4-dirty
-Build Date: 2026-02-03 23:04:35 UTC
-Commit: bc659a4 (v2)
+Version: v0.1.0-13-g370f582-dirty
+Build Date: 2026-02-04 09:59:58 UTC
+Commit: 370f582 (v2)
 Builder: timlinux@abyss-laptop

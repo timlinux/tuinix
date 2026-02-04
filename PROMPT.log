@@ -799,3 +799,14 @@ Brand colors used:
 - #DC3545 (red) - errors
 - #FFC107 (amber) - warnings
 - #654321 (earth brown) - details
+
+## Session: 2026-02-04 (continued)
+- Continued catimg logo replacement work from previous session
+- Replaced pre-rendered ASCII mascot logo in Go installer with catimg-generated 24-bit ANSI color logos
+- Used go:embed to include logo-header.txt (compact, 6 lines) and logo-large.txt (12 lines) in the binary
+- Updated renderHeader() to pass catimg output as-is (no lipgloss color override since catimg has embedded colors)
+- Updated viewSplash() to show large centered logo above the TUINIX title
+- Rewrote welcome.sh to render logo at runtime using catimg from LOGO.png (centered on screen)
+- Added catimg to ISO packages and LOGO.png to ISO contents in installer.nix
+- Built ISO successfully (812M, all validations passed)
+- User requested: big version as splash screen on boot, centered on screen, instructions below

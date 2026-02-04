@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"log"
 	"math"
@@ -60,18 +61,13 @@ var (
 	colorDarkGray = lipgloss.Color("#555555") // Borders, subtle elements
 )
 
-// Pre-rendered ASCII mascot logo (compact version for header)
-const mascotLogo = `  ▗▆▇▇▆▄
-  ▎╷──┊▝╴
-  ▘▅▆▅▄▇▊
-  ▊▗▎▉┊▝╴
-  ▍▝▏▋▁▉┊
-▗▆▄▂┒╺▉▄▆▄
- ┈╹╎┊▗▖▂┈▆╴
-  ▆▍╾▆▅▆╿▅
-   ▝▁▇▂▗▘╹╴
-    ╴▁▆▂▄▅
-     ▆▄┈▄▇`
+// Embedded catimg-rendered mascot logos (24-bit ANSI color)
+//
+//go:embed logo-header.txt
+var mascotLogo string
+
+//go:embed logo-large.txt
+var mascotLogoLarge string
 
 // Figlet-style TUINIX title
 const tuinixTitle = `████████╗██╗   ██╗██╗███╗   ██╗██╗██╗  ██╗
@@ -109,9 +105,6 @@ var (
 	borderStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(colorDarkGray)
-
-	headerLogoStyle = lipgloss.NewStyle().
-			Foreground(colorOrange)
 
 	headerTitleStyle = lipgloss.NewStyle().
 				Foreground(colorNixBlue).
@@ -895,13 +888,8 @@ func (m model) View() string {
 
 // renderHeader creates the consistent header with logo and title
 func (m model) renderHeader() string {
-	// Left side: mascot logo
-	logoLines := strings.Split(mascotLogo, "\n")
-	styledLogo := make([]string, len(logoLines))
-	for i, line := range logoLines {
-		styledLogo[i] = headerLogoStyle.Render(line)
-	}
-	logoBlock := strings.Join(styledLogo, "\n")
+	// Left side: mascot logo (catimg output already has embedded ANSI colors)
+	logoBlock := strings.TrimRight(mascotLogo, "\n ")
 
 	// Right side: TUINIX title
 	titleLines := strings.Split(tuinixTitle, "\n")
@@ -1175,8 +1163,33 @@ func (m model) viewFireTransition() string {
 }
 
 func (m model) viewSplash() string {
-	// Full header
-	header := m.renderHeader()
+	// Large mascot logo (catimg output with embedded ANSI colors)
+	largeLogo := strings.TrimRight(mascotLogoLarge, "\n ")
+
+	// Center the logo by padding each line
+	logoLines := strings.Split(largeLogo, "\n")
+	centeredLogo := make([]string, len(logoLines))
+	// catimg visual width is ~30 chars for w60
+	logoVisualWidth := 30
+	for i, line := range logoLines {
+		pad := (m.width - logoVisualWidth) / 2
+		if pad < 0 {
+			pad = 0
+		}
+		centeredLogo[i] = strings.Repeat(" ", pad) + line
+	}
+	logoBlock := strings.Join(centeredLogo, "\n")
+
+	// TUINIX title centered
+	titleLines := strings.Split(tuinixTitle, "\n")
+	styledTitle := make([]string, len(titleLines))
+	for i, line := range titleLines {
+		styledTitle[i] = headerTitleStyle.Render(line)
+	}
+	titleBlock := lipgloss.NewStyle().
+		Align(lipgloss.Center).
+		Width(m.width - 4).
+		Render(strings.Join(styledTitle, "\n"))
 
 	line := m.renderHorizontalLine()
 
@@ -1199,7 +1212,9 @@ func (m model) viewSplash() string {
 	footer := m.renderFooter()
 
 	content := lipgloss.JoinVertical(lipgloss.Center,
-		header,
+		logoBlock,
+		"",
+		titleBlock,
 		line,
 		"",
 		subtitle,

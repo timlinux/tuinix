@@ -21,7 +21,12 @@
       "Bash(gh pr create:*)",
       "Bash(git fetch:*)",
       "Bash(git checkout:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(gh release upload:*)",
+      "Bash(/tmp/catimg-header-raw.txt)",
+      "Bash(/tmp/catimg-welcome-raw.txt)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []
