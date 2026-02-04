@@ -122,7 +122,7 @@ Boot from USB -- you'll land in `/home/tuinix` with a welcome
 message. Run:
 
 ```bash
-sudo scripts/install.sh
+sudo installer
 ```
 
 > <img src=".github/assets/LOGO.png" width="20">
@@ -148,7 +148,7 @@ Customize your system:
 ```bash
 cd ~/tuinix
 # Make changes to the configuration
-sudo nixos-rebuild switch --flake .#$(hostname)
+./scripts/rebuild.sh
 ```
 
 > <img src=".github/assets/LOGO.png" width="20">
@@ -165,8 +165,8 @@ sudo nixos-rebuild switch --flake .#$(hostname)
   compression, checksums, and snapshots
 - **Terminal only** -- No X11, no Wayland. Minimal resource
   usage, maximum productivity
-- **Interactive installer** -- Guided setup with disk
-  selection, encryption, and locale configuration
+- **Interactive TUI installer** -- Go-based wizard with
+  account setup, disk selection, encryption, and locale configuration
 
 ## Contributing
 

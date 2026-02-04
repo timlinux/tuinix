@@ -17,7 +17,11 @@
       "Bash(gh run watch:*)",
       "Bash(gh run view:*)",
       "Bash(nix-shell -p nodePackages.prettier --run \"find /home/timlinux/dev/nix/tuinix -name ''''*.yml'''' -o -name ''''*.yaml'''' | grep -v ''''.git/'''' | grep -v ''''.direnv/'''' | grep -v ''''mkdocs.yml'''' | xargs prettier --write\")",
-      "Bash(nix-shell:*)"
+      "Bash(nix-shell:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

@@ -76,18 +76,21 @@ Before booting from USB, enter your BIOS/UEFI settings (typically by pressing F2
 Once the USB boots, you'll land in `/home/tuinix` with a welcome message showing the mascot and install instructions. Run:
 
 ```bash
-sudo scripts/install.sh
+sudo installer
 ```
 
-The interactive installer will guide you through:
+The interactive TUI installer will guide you through:
 
-1. **Hostname** -- name your machine
-2. **Disk selection** -- choose the target disk (the installer shows all available disks)
-3. **ZFS encryption** -- set a passphrase for full-disk encryption
-4. **Locale and keyboard** -- select your region and layout
-5. **Confirmation** -- review the summary, type `DESTROY` to confirm
-6. **Installation** -- partitioning, formatting, and NixOS install run automatically
-7. **Root password** -- set the root password for your new system
+1. **Username** -- enter your login username
+2. **Full name** -- your display name (used in git config)
+3. **Email** -- your email address (used in git config)
+4. **Password** -- set your login password (entered twice to confirm)
+5. **Hostname** -- name your machine
+6. **Disk selection** -- choose the target disk (the installer shows all available disks)
+7. **ZFS encryption passphrase** -- set a passphrase for full-disk encryption (entered twice to confirm)
+8. **Locale and keyboard** -- select your region and layout
+9. **Confirmation** -- review the summary, type `DESTROY` to confirm
+10. **Installation** -- partitioning, formatting, and NixOS install run automatically
 
 ## Step 5: First boot
 
@@ -95,7 +98,7 @@ The interactive installer will guide you through:
 2. Reboot
 3. At the GRUB menu, select tuinix
 4. Enter your ZFS encryption passphrase when prompted
-5. Log in with your configured credentials
+5. Log in with the username and password you set during installation
 
 ## Disk layout
 
@@ -119,13 +122,27 @@ ZFS datasets created:
 After installation, the flake is copied to two locations:
 
 - `/etc/tuinix` -- system reference copy
-- `/home/user/tuinix` -- your working copy
+- `/home/<username>/tuinix` -- your working copy (a git repo tracking upstream)
+
+Your user configuration is at `users/<username>.nix` and includes:
+
+- User account settings
+- Home-manager git configuration with your name and email
+- Default groups (wheel, networkmanager, audio, video, docker)
 
 To make changes to your system configuration:
 
 ```bash
 cd ~/tuinix
 # Edit configuration files
+sudo nixos-rebuild switch --flake .#<hostname>
+```
+
+To pull upstream changes:
+
+```bash
+cd ~/tuinix
+git pull
 sudo nixos-rebuild switch --flake .#<hostname>
 ```
 

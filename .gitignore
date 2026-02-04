@@ -82,3 +82,7 @@ yarn-error.log*
 result/*
 core
 site/
+
+# Build artifacts
+cmd/installer/tuinix-installer
+iso-inventory.txt

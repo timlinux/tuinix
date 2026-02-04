@@ -90,9 +90,10 @@ jobs:
             ## Installation
             Download the ISO image below and follow the [installation guide](https://timlinux.github.io/tuinix/installation/).
 
-            Flash to USB:
+            Flash to USB and boot:
             ```bash
-            sudo dd if=tuinix-installer.iso of=/dev/sdX bs=4M status=progress oflag=sync
+            sudo dd if=<downloaded-iso> of=/dev/sdX bs=4M status=progress oflag=sync
+            # Boot from USB, then run: sudo installer
             ```
           files: |
             result/iso/*.iso

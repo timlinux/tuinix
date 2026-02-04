@@ -65,11 +65,11 @@ Use [balenaEtcher](https://etcher.balena.io/) or
 
 ### :material-wizard-hat: 3. Run the Installer
 
-The interactive installer walks you through disk selection,
-ZFS encryption passphrase, locale, and hostname.
+The interactive TUI installer walks you through account setup,
+disk selection, ZFS encryption, locale, and hostname.
 
 ```bash
-sudo scripts/install.sh
+sudo installer
 ```
 
 </div>

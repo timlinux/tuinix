@@ -745,3 +745,57 @@ PROMPT: well we cant have both the action deployment and the gh-pages branch so 
 PROMPT.log
 2026-02-02 00:04:44 UTC - Updated homepage Flash & Boot step to recommend balenaEtcher/Ventoy as primary, dd as advanced option
 2026-02-02 00:28:40 UTC - Removed obsolete README.txt validation check from build-iso.sh (file was deleted in previous session)
+2026-02-03 18:48:42 UTC - Enhanced installer: prompt for username/fullname/email, create dynamic user.nix with home-manager git config, fix git identity for commit, add Portuguese locale/keyboard options
+
+=== Session: 2026-02-03 ===
+Context: Continuing from previous session - migrating install.sh to Go TUI
+
+Tasks completed:
+1. Created Go TUI installer using bubbletea/lipgloss/charmbracelet
+   - Fire particle transition animation at startup
+   - Splash screen with pre-rendered mascot logo  
+   - Physics-based gravity/bounce animation framework
+   - All user input screens: username, fullname, email, hostname, disk, locale, keymap
+   - Summary and confirmation screens with DESTROY confirmation
+   - Installation progress view with spinner animation
+   - Completion and error screens
+
+2. Ported all install.sh functionality to Go:
+   - generateHostConfig() - creates user.nix, default.nix, disks.nix, hardware.nix
+   - formatDisk() - zgenhostid, unmount, disko
+   - generateHardwareConfig() - nixos-generate-config with ZFS config
+   - installNixOS() - nixos-install --flake
+   - configureZFSBoot() - set bootfs property
+   - copyFlake() - copy to /mnt/etc/tuinix
+   - setupUserFlake() - git clone, copy configs, commit with user identity
+   - finalizeZFSPool() - export/import for hostId stamp
+
+3. Created go.mod with dependencies:
+   - github.com/charmbracelet/bubbles
+   - github.com/charmbracelet/bubbletea  
+   - github.com/charmbracelet/lipgloss
+   - golang.org/x/term
+
+4. Integrated Go installer into Nix build:
+   - Added buildGoModule in installer.nix with vendorHash
+   - Added tuinix-installer to environment.systemPackages
+
+5. Updated documentation:
+   - docs/installation/bare-metal.md - changed to sudo tuinix-installer
+   - docs/installation/vm.md - changed installer command references
+
+Files created/modified:
+- cmd/installer/main.go (1660 lines)
+- cmd/installer/go.mod
+- cmd/installer/go.sum
+- installer.nix (added buildGoModule)
+- docs/installation/bare-metal.md
+- docs/installation/vm.md
+
+Brand colors used:
+- #E95420 (orange) - primary brand
+- #5277C3 (NixOS blue) - info/prompts
+- #28A745 (green) - success
+- #DC3545 (red) - errors
+- #FFC107 (amber) - warnings
+- #654321 (earth brown) - details
