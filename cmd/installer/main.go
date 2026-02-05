@@ -4,10 +4,12 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -195,6 +197,8 @@ const (
 	statePassphraseConfirm
 	stateLocale
 	stateKeymap
+	stateSSH
+	stateGitHubUser
 	stateSummary
 	stateConfirm
 	stateInstalling
@@ -411,6 +415,47 @@ Common layouts:
 • fr - French (AZERTY)`,
 		stepNum: 12,
 	},
+	stateSSH: {
+		title: "SSH Server",
+		description: `Choose whether to enable the SSH server
+on the installed system.
+
+SSH allows remote access to your machine
+over the network. When enabled:
+• OpenSSH server runs on port 22
+• Root login via password is disabled
+• Only key-based root login is allowed
+• Password auth is disabled by default
+
+The firewall will also be enabled with
+port 22 open for SSH connections.
+
+You will be asked for your GitHub username
+so we can fetch your public SSH keys.
+
+Recommended for servers and headless
+machines. You can change this later in
+your NixOS configuration.`,
+		stepNum: 13,
+	},
+	stateGitHubUser: {
+		title: "GitHub Username",
+		description: `Enter your GitHub username to fetch your
+public SSH keys.
+
+Your public keys will be downloaded from:
+  https://github.com/<username>.keys
+
+These keys will be added to your
+authorized_keys file, allowing you to
+SSH into this machine using your existing
+GitHub SSH keys.
+
+Password authentication will be disabled,
+so key-based access is the only way to
+log in remotely.`,
+		stepNum: 14,
+	},
 	stateSummary: {
 		title: "Review Configuration",
 		description: `Please review your installation settings.
@@ -425,7 +470,7 @@ After confirmation, the installer will:
 This process takes 10-30 minutes
 depending on your hardware and
 internet connection speed.`,
-		stepNum: 13,
+		stepNum: 15,
 	},
 	stateConfirm: {
 		title: "Final Confirmation",
@@ -438,11 +483,11 @@ This action cannot be undone.
 
 To proceed, type DESTROY exactly.
 To cancel, press Ctrl+C or q.`,
-		stepNum: 14,
+		stepNum: 16,
 	},
 }
 
-const totalSteps = 14
+const totalSteps = 16
 
 // Config holds all installation configuration
 type Config struct {
@@ -459,6 +504,9 @@ type Config struct {
 	Locale        string
 	Keymap        string
 	ConsoleKeyMap string
+	EnableSSH     bool
+	GitHubUser    string
+	SSHKeys       []string
 	SpaceBoot     string
 	SpaceNix      string
 	SpaceHome     string
@@ -687,10 +735,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "q":
-			// Only allow q to quit on non-input screens (splash, disk selection, locale, keymap, summary, complete, error)
+			// Only allow q to quit on non-input screens (splash, disk selection, locale, keymap, ssh, summary, complete, error)
 			// Text input states must pass q through to the input field
 			switch m.state {
-			case stateSplash, stateNetworkCheck, stateDisk, stateDiskMulti, stateLocale, stateKeymap, stateSummary, stateStorageMode, stateComplete, stateError:
+			case stateSplash, stateNetworkCheck, stateDisk, stateDiskMulti, stateLocale, stateKeymap, stateSSH, stateSummary, stateStorageMode, stateComplete, stateError:
 				return m, tea.Quit
 			}
 		case "enter":
@@ -703,7 +751,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.diskSelected[m.selectedIdx] = !m.diskSelected[m.selectedIdx]
 			}
 		case "up", "k":
-			if m.state == stateDisk || m.state == stateDiskMulti || m.state == stateLocale || m.state == stateKeymap || m.state == stateStorageMode {
+			if m.state == stateDisk || m.state == stateDiskMulti || m.state == stateLocale || m.state == stateKeymap || m.state == stateSSH || m.state == stateStorageMode {
 				if m.selectedIdx > 0 {
 					m.selectedIdx--
 				}
@@ -716,6 +764,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.state == stateLocale && m.selectedIdx < len(m.locales)-1 {
 				m.selectedIdx++
 			} else if m.state == stateKeymap && m.selectedIdx < len(m.keymaps)-1 {
+				m.selectedIdx++
+			} else if m.state == stateSSH && m.selectedIdx < 1 {
 				m.selectedIdx++
 			} else if m.state == stateStorageMode && m.selectedIdx < len(storageModes)-1 {
 				m.selectedIdx++
@@ -767,6 +817,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state == stateEmail || m.state == statePassword || m.state == statePasswordConfirm ||
 		m.state == stateHostname ||
 		m.state == statePassphrase || m.state == statePassphraseConfirm ||
+		m.state == stateGitHubUser ||
 		m.state == stateConfirm ||
 		m.state == stateStorageMode || m.state == stateDiskMulti {
 		m.input, cmd = m.input.Update(msg)
@@ -1052,6 +1103,40 @@ func (m model) handleEnter() (tea.Model, tea.Cmd) {
 		m.config.Keymap = km.XKBLayout
 		m.config.ConsoleKeyMap = km.ConsoleMap
 		calculateSpaceAllocation(&m.config)
+		m.state = stateSSH
+		m.selectedIdx = 0
+
+	case stateSSH:
+		m.config.EnableSSH = m.selectedIdx == 0
+		if m.config.EnableSSH {
+			m.state = stateGitHubUser
+			m.input.SetValue("")
+			m.input.Placeholder = "e.g., octocat"
+			m.input.EchoMode = textinput.EchoNormal
+			m.input.EchoCharacter = 0
+		} else {
+			m.state = stateSummary
+		}
+
+	case stateGitHubUser:
+		val := strings.TrimSpace(m.input.Value())
+		if val == "" {
+			m.err = fmt.Errorf("GitHub username is required for SSH key setup")
+			return m, nil
+		}
+		// Fetch SSH keys from GitHub
+		keys, err := fetchGitHubKeys(val)
+		if err != nil {
+			m.err = fmt.Errorf("failed to fetch keys: %v", err)
+			return m, nil
+		}
+		if len(keys) == 0 {
+			m.err = fmt.Errorf("no public SSH keys found for GitHub user %q", val)
+			return m, nil
+		}
+		m.config.GitHubUser = val
+		m.config.SSHKeys = keys
+		m.err = nil
 		m.state = stateSummary
 
 	case stateSummary:
@@ -1226,7 +1311,7 @@ func (m model) renderRightPanel(stepNum int) string {
 	var content string
 
 	switch m.state {
-	case stateUsername, stateFullname, stateEmail, statePassword, statePasswordConfirm, stateHostname, statePassphrase, statePassphraseConfirm, stateConfirm:
+	case stateUsername, stateFullname, stateEmail, statePassword, statePasswordConfirm, stateHostname, statePassphrase, statePassphraseConfirm, stateGitHubUser, stateConfirm:
 		inputBox := lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(colorNixBlue).
@@ -1319,6 +1404,30 @@ func (m model) renderRightPanel(stepNum int) string {
 		hint := grayStyle.Render("\nSpace to toggle | Up/Down to move | Enter to confirm")
 		content = warning + "\n" + statusStyle.Render(status) + "\n\n" + diskList.String() + errText + hint
 
+	case stateSSH:
+		sshOptions := []struct {
+			label string
+			desc  string
+		}{
+			{"Yes - Enable SSH", "SSH server on port 22, firewall enabled"},
+			{"No - Disable SSH", "No remote access (can enable later)"},
+		}
+		var optList strings.Builder
+		for i, opt := range sshOptions {
+			cursor := "  "
+			style := lipgloss.NewStyle().Foreground(colorOffWhite)
+			if i == m.selectedIdx {
+				cursor = "> "
+				style = style.Foreground(colorOrange).Bold(true)
+			}
+			optList.WriteString(style.Render(cursor + opt.label))
+			optList.WriteString("\n")
+			optList.WriteString(grayStyle.Render("   " + opt.desc))
+			optList.WriteString("\n")
+		}
+		hint := grayStyle.Render("\nUp/Down to select | Enter to confirm")
+		content = optList.String() + hint
+
 	case stateLocale:
 		var optList strings.Builder
 		for i, opt := range m.locales {
@@ -1373,6 +1482,15 @@ func (m model) renderRightPanel(stepNum int) string {
 				infoStyle.Render("  /:          remainder (XFS)")
 		}
 
+		sshStatus := "Disabled"
+		var sshExtra string
+		if m.config.EnableSSH {
+			sshStatus = "Enabled (port 22)"
+			sshExtra = "\n" +
+				infoStyle.Render(fmt.Sprintf("  GitHub:    %s", m.config.GitHubUser)) + "\n" +
+				infoStyle.Render(fmt.Sprintf("  SSH keys:  %d key(s) imported", len(m.config.SSHKeys)))
+		}
+
 		content = promptStyle.Render("User Account") + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Username:  %s", m.config.Username)) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Full name: %s", m.config.Fullname)) + "\n" +
@@ -1383,7 +1501,9 @@ func (m model) renderRightPanel(stepNum int) string {
 			diskInfo + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Host ID:   %s", m.config.HostID)) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Locale:    %s", m.config.Locale)) + "\n" +
-			infoStyle.Render(fmt.Sprintf("  Keyboard:  %s", m.config.Keymap)) + "\n\n" +
+			infoStyle.Render(fmt.Sprintf("  Keyboard:  %s", m.config.Keymap)) + "\n" +
+			infoStyle.Render(fmt.Sprintf("  SSH:       %s", sshStatus)) +
+			sshExtra + "\n\n" +
 			allocSection + "\n\n" +
 			grayStyle.Render("Enter to proceed | Ctrl+C to cancel")
 	}
@@ -1755,6 +1875,38 @@ func isValidEmail(s string) bool {
 	return matched
 }
 
+// fetchGitHubKeys fetches public SSH keys for a GitHub user
+func fetchGitHubKeys(username string) ([]string, error) {
+	url := fmt.Sprintf("https://github.com/%s.keys", username)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 404 {
+		return nil, fmt.Errorf("GitHub user %q not found", username)
+	}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("GitHub returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var keys []string
+	for _, line := range strings.Split(strings.TrimSpace(string(body)), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			keys = append(keys, line)
+		}
+	}
+	return keys, nil
+}
+
 func isValidHostname(s string) bool {
 	if s == "" {
 		return false
@@ -2018,7 +2170,7 @@ func runCommand(name string, args ...string) (string, error) {
 func runInstallation(c Config) tea.Cmd {
 	return func() tea.Msg {
 		logInfo("=== Starting installation ===")
-		logInfo("Config: Username=%s, Hostname=%s, Disk=%s, StorageMode=%s", c.Username, c.Hostname, c.Disk, c.StorageMode)
+		logInfo("Config: Username=%s, Hostname=%s, Disk=%s, StorageMode=%s, EnableSSH=%v", c.Username, c.Hostname, c.Disk, c.StorageMode, c.EnableSSH)
 		if c.StorageMode.isMultiDisk() {
 			logInfo("Config: Disks=%v", c.Disks)
 		}
@@ -2154,6 +2306,17 @@ func generateHostConfig(c Config) error {
 	}
 	logInfo("generateHostConfig: password hashed successfully")
 
+	// Build SSH authorized keys section if SSH is enabled
+	var sshKeysSection string
+	if c.EnableSSH && len(c.SSHKeys) > 0 {
+		var keyLines strings.Builder
+		for _, key := range c.SSHKeys {
+			keyLines.WriteString(fmt.Sprintf("      %q\n", key))
+		}
+		sshKeysSection = fmt.Sprintf(`    openssh.authorizedKeys.keys = [
+%s    ];`, keyLines.String())
+	}
+
 	userNix := fmt.Sprintf(`# User configuration for %s
 # Generated by tuinix installer on %s
 { config, lib, pkgs, ... }:
@@ -2166,6 +2329,7 @@ func generateHostConfig(c Config) error {
     home = "/home/%s";
     createHome = true;
     hashedPassword = "%s";
+%s
   };
 
   home-manager.users.%s = { pkgs, ... }: {
@@ -2183,7 +2347,7 @@ func generateHostConfig(c Config) error {
   };
 }
 `, c.Username, time.Now().UTC().Format("2006-01-02 15:04:05 UTC"),
-		c.Username, c.Fullname, c.Username, hashedPassword,
+		c.Username, c.Fullname, c.Username, hashedPassword, sshKeysSection,
 		c.Username,
 		c.Fullname, c.Email)
 
@@ -2198,6 +2362,14 @@ func generateHostConfig(c Config) error {
   tuinix.zfs.encryption = ` + fmt.Sprintf("%v", c.StorageMode.isEncrypted()) + `;`
 	} else {
 		zfsConfig = `  tuinix.zfs.enable = false;`
+	}
+
+	var sshConfig string
+	if c.EnableSSH {
+		sshConfig = `
+  # SSH and firewall
+  tuinix.security.ssh.enable = true;
+  tuinix.security.firewall.enable = true;`
 	}
 
 	defaultNix := fmt.Sprintf(`{ config, lib, pkgs, inputs, hostname, ... }:
@@ -2219,14 +2391,14 @@ func generateHostConfig(c Config) error {
   ];
 
 %s
-
+%s
   boot.consoleLogLevel = 3;
 
   i18n.defaultLocale = "%s";
   services.xserver.xkb.layout = "%s";
   console.keyMap = "%s";
 }
-`, c.Username, zfsConfig, c.Locale, c.Keymap, c.ConsoleKeyMap)
+`, c.Username, zfsConfig, sshConfig, c.Locale, c.Keymap, c.ConsoleKeyMap)
 
 	if err := os.WriteFile(filepath.Join(hostDir, "default.nix"), []byte(defaultNix), 0644); err != nil {
 		return fmt.Errorf("write default.nix: %w", err)

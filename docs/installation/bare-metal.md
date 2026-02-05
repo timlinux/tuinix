@@ -91,8 +91,9 @@ The interactive TUI installer will guide you through:
 8. **Disk selection** -- choose the target disk(s)
 9. **ZFS encryption passphrase** -- set a passphrase for full-disk encryption (skipped for XFS mode)
 10. **Locale and keyboard** -- select your region and layout
-11. **Confirmation** -- review the summary, type `DESTROY` to confirm
-12. **Installation** -- partitioning, formatting, and NixOS install run automatically. A live log tail is displayed so you can monitor progress.
+11. **SSH server** -- choose whether to enable the OpenSSH server on the installed system (see [SSH Server](#ssh-server) below)
+12. **Confirmation** -- review the summary, type `DESTROY` to confirm
+13. **Installation** -- partitioning, formatting, and NixOS install run automatically. A live log tail is displayed so you can monitor progress.
 
 ## Storage Modes
 
@@ -132,6 +133,25 @@ critical data that needs maximum redundancy.
 !!! tip "Multi-disk selection"
     For multi-disk modes, use **Space** to toggle each disk on/off and **Enter** to confirm
     your selection. The first selected disk will host the EFI boot partition.
+
+## SSH Server
+
+The installer optionally configures SSH access on the installed system. When enabled:
+
+- The OpenSSH server listens on port 22
+- The firewall is enabled with port 22 open
+- Password authentication is disabled for security
+- Root login via password is prohibited (key-based only)
+- You will be prompted for a GitHub username so the installer can fetch your public SSH keys and add them to your authorized keys
+
+This is recommended for servers and headless machines. If you skip SSH during installation, you can enable it later by adding the following to your host configuration:
+
+```nix
+tuinix.security.ssh.enable = true;
+tuinix.security.firewall.enable = true;
+```
+
+Then rebuild with `sudo nixos-rebuild switch --flake .#<hostname>`.
 
 ## Step 5: First boot
 
