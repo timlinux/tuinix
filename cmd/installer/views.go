@@ -42,16 +42,30 @@ func (m model) viewWizard() string {
 		"",
 		descText,
 	)
+
+	// Apply spring animation offset to left box (slides in from left)
+	leftOffset := int(m.leftX)
+	if leftOffset < 0 {
+		leftOffset = 0
+	}
 	leftBox := borderStyle.
 		Width(leftWidth).
 		Height(contentHeight).
+		MarginLeft(leftOffset).
 		Render(leftContent)
 
 	// Right column: user inputs
 	rightContent := m.renderRightPanel(step.stepNum)
+
+	// Apply spring animation offset to right box (slides in from right)
+	rightOffset := int(m.rightX)
+	if rightOffset < 0 {
+		rightOffset = 0
+	}
 	rightBox := borderStyle.
 		Width(rightWidth).
 		Height(contentHeight).
+		MarginRight(rightOffset).
 		Render(rightContent)
 
 	// Combine columns

@@ -11,7 +11,15 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/harmonica"
 	"golang.org/x/term"
+)
+
+// Spring animation constants
+const (
+	springFPS       = 60
+	springFrequency = 5.0  // Lower = slower oscillation
+	springDamping   = 0.7  // Higher = less bouncy (0-1 range, 1 = no bounce)
 )
 
 func initialModel() model {
@@ -57,6 +65,14 @@ func initialModel() model {
 	}
 	m.width = w
 	m.height = h
+
+	// Initialize spring animations for widget slide-in effects
+	// Left panel slides in from the left (-width to 0)
+	// Right panel slides in from the right (+width to 0)
+	m.leftSpring = harmonica.NewSpring(harmonica.FPS(springFPS), springFrequency, springDamping)
+	m.rightSpring = harmonica.NewSpring(harmonica.FPS(springFPS), springFrequency, springDamping)
+	m.leftX = float64(-w / 2)  // Start off-screen left
+	m.rightX = float64(w / 2)  // Start off-screen right
 
 	// Initialize fire particles
 	m.initFireParticles()
@@ -279,9 +295,41 @@ func (m model) handleTick() (tea.Model, tea.Cmd) {
 
 	case stateInstalling:
 		return m, tea.Batch(tick(), pollLogTail(m.config.StorageMode.isZFS()))
+
+	default:
+		// For wizard states, update spring animations
+		if m.isWizardState() {
+			// Update spring positions toward target (0 = centered)
+			m.leftX, m.leftXVel = m.leftSpring.Update(m.leftX, m.leftXVel, 0)
+			m.rightX, m.rightXVel = m.rightSpring.Update(m.rightX, m.rightXVel, 0)
+
+			// Check if animation is still in progress
+			m.springAnimating = math.Abs(m.leftX) > 0.5 || math.Abs(m.rightX) > 0.5 ||
+				math.Abs(m.leftXVel) > 0.1 || math.Abs(m.rightXVel) > 0.1
+
+			if m.springAnimating {
+				return m, tick()
+			}
+		}
 	}
 
 	return m, nil
+}
+
+// isWizardState returns true if the current state is a wizard step
+func (m model) isWizardState() bool {
+	_, ok := wizardSteps[m.state]
+	return ok
+}
+
+// resetSpringAnimation resets the spring animation for widget slide-in
+func (m *model) resetSpringAnimation() {
+	// Start panels off-screen
+	m.leftX = float64(-m.width / 2)
+	m.rightX = float64(m.width / 2)
+	m.leftXVel = 0
+	m.rightXVel = 0
+	m.springAnimating = true
 }
 
 func (m model) handleEnter() (tea.Model, tea.Cmd) {
@@ -520,6 +568,13 @@ func (m model) handleEnter() (tea.Model, tea.Cmd) {
 
 	case stateComplete, stateError:
 		return m, tea.Quit
+	}
+
+	// Trigger spring animation when transitioning to a new wizard state
+	if m.isWizardState() && m.prevState != m.state {
+		m.resetSpringAnimation()
+		m.prevState = m.state
+		return m, tick()
 	}
 
 	return m, nil

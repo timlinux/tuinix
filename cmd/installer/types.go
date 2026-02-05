@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
+	"github.com/charmbracelet/harmonica"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -439,6 +440,7 @@ type keymapEntry struct {
 type model struct {
 	state        installState
 	nextState    installState
+	prevState    installState // For detecting state transitions
 	config       Config
 	width        int
 	height       int
@@ -457,6 +459,15 @@ type model struct {
 	animTick      int
 	animDone      bool
 	prevContent   string
+
+	// Spring animations for widgets
+	leftSpring     harmonica.Spring
+	rightSpring    harmonica.Spring
+	leftX          float64 // Current X position of left panel
+	leftXVel       float64 // Velocity of left panel
+	rightX         float64 // Current X position of right panel
+	rightXVel      float64 // Velocity of right panel
+	springAnimating bool   // Whether spring animation is in progress
 
 	// Network check
 	networkOk bool

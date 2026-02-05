@@ -15,7 +15,7 @@ let
     pname = "tuinix-installer";
     version = "1.0.0";
     src = ./cmd/installer;
-    vendorHash = "sha256-zCz/3pDKeOz5gO01mcMw3P+vab6Evr0XFT0oyNglGJI=";
+    vendorHash = null;
     ldflags = [ "-s" "-w" ];
     env = {
       CGO_ENABLED = "0";
