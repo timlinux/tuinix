@@ -1,6 +1,6 @@
 tuinix Build Information
 ==============================
-Version: 0.5.0
-Build Date: 2026-02-08 13:18:06 UTC
-Commit: 64af2cd (v0.5.0)
+Version: v0.4.0-3-g5888d8e-dirty
+Build Date: 2026-02-08 14:44:39 UTC
+Commit: 5888d8e (v0.5.0)
 Builder: timlinux@abyss-laptop
