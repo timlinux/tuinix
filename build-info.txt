@@ -1,6 +1,6 @@
 tuinix Build Information
 ==============================
-Version: v0.4
-Build Date: 2026-02-05 23:11:07 UTC
-Commit: 81bd8dd (v3)
-Builder: timlinux@abyss-laptop
+Version: 080f99b-dirty
+Build Date: 2026-02-08 16:17:46 UTC
+Commit: 080f99b (main)
+Builder: user@MacBook-Air-5.local
