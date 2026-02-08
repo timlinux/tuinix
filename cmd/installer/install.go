@@ -238,6 +238,9 @@ func generateHostConfig(c Config) error {
 %s
   boot.consoleLogLevel = 3;
 
+  # Enable iPhone USB tethering support
+  tuinix.networking.iphone-tethering.enable = true;
+
   i18n.defaultLocale = "%s";
   services.xserver.xkb.layout = "%s";
   console.keyMap = "%s";
