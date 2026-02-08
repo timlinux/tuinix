@@ -89,10 +89,17 @@ in
     nixos-install-tools
     mkpasswd
     util-linux
+    # iPhone USB tethering support
+    libimobiledevice
+    ifuse
+    usbmuxd
   ];
 
   # Enable SSH
   services.openssh.enable = true;
+
+  # Enable iPhone USB tethering support
+  services.usbmuxd.enable = true;
 
   # Set root password (override any defaults)
   users.users.root = {
@@ -125,19 +132,10 @@ in
   # Enable flakes and nix-command for disko and nixos-install
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
-  # Copy /iso/tuinix to /home/tuinix (writable) and set up ownership
+  # Symlink /iso/tuinix to /home/tuinix and set up welcome on login
   system.activationScripts.tuinix-home = ''
     mkdir -p /home
-    # Copy tuinix repo to writable location if it doesn't exist yet
-    if [ ! -d /home/tuinix ] && [ -d /iso/tuinix ]; then
-      cp -r /iso/tuinix /home/tuinix
-      chmod -R u+w /home/tuinix
-      # Initialize as git repo so user can track changes
-      cd /home/tuinix
-      ${pkgs.git}/bin/git init -q
-      ${pkgs.git}/bin/git add -A
-      ${pkgs.git}/bin/git commit -q -m "Initial tuinix configuration from ISO"
-    fi
+    ln -sfn /iso/tuinix /home/tuinix
   '';
 
   # Root profile: cd into tuinix dir and show welcome on interactive login

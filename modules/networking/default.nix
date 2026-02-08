@@ -2,5 +2,5 @@
 { lib, ... }:
 
 {
-  imports = [ ./wireless.nix ./ethernet.nix ];
+  imports = [ ./wireless.nix ./ethernet.nix ./iphone-tethering.nix ];
 }

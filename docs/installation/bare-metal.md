@@ -71,6 +71,40 @@ Before booting from USB, enter your BIOS/UEFI settings (typically by pressing F2
 !!! tip
     Many machines have a one-time boot menu (often F12) that lets you select the USB without changing permanent settings.
 
+## Network connectivity
+
+The installer requires an internet connection to download packages. Here are several options for getting online from the live environment:
+
+### Ethernet (automatic)
+
+If you have a wired Ethernet connection, DHCP runs automatically and you should be online immediately.
+
+### iPhone USB tethering
+
+The live ISO includes iPhone USB tethering support out of the box:
+
+1. Connect your iPhone via USB cable
+2. On your iPhone, enable **Settings → Personal Hotspot**
+3. When prompted, choose **Trust** this computer
+4. The iPhone should appear as a network interface (check with `ip link`)
+5. Run `sudo dhcpcd eth1` (or whichever interface name your iPhone appears as)
+
+!!! tip "Finding the iPhone interface"
+    Run `ip link` to see all interfaces. The iPhone typically appears as `eth1` or similar after connection.
+
+### WiFi
+
+For WiFi, use `wpa_supplicant` or `nmcli`:
+
+```bash
+# Using wpa_supplicant
+sudo wpa_supplicant -B -i wlan0 -c <(wpa_passphrase "SSID" "password")
+sudo dhcpcd wlan0
+
+# Or using nmcli if NetworkManager is available
+sudo nmcli device wifi connect "SSID" password "password"
+```
+
 ## Step 4: Run the installer
 
 Once the USB boots, you'll land in `/home/tuinix` with a welcome message showing the mascot and install instructions. Run:

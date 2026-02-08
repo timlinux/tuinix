@@ -838,3 +838,4 @@ Changes made:
 - installer.nix: Added xfsprogs to ISO packages
 - docs/installation/bare-metal.md: Full documentation of all 5 storage modes, disk layouts, recovery procedures
 2026-02-04T23:36:06+00:00 - User request: Add an option to the installer where the user can choose to enable SSH. If the user opts in for SSH, ask them for a GitHub username, fetch the public key for that user and add it to the authorized keys list, enforce key-based authentication and disable password-based auth.
+2026-02-08 14:42:33 - when the live cd is booted I need to be able to access the network / internet using a tethered iphone that is in hotspot mode. Rollback your attempts to fix the ro states of the tuinix repo in the users home dir
