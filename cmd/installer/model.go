@@ -102,7 +102,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Only allow q to quit on non-input screens (splash, disk selection, locale, keymap, ssh, summary, complete, error)
 			// Text input states must pass q through to the input field
 			switch m.state {
-			case stateSplash, stateNetworkCheck, stateDisk, stateDiskMulti, stateLocale, stateKeymap, stateSSH, stateSummary, stateStorageMode, stateComplete, stateError:
+			case stateSplash, stateNetworkCheck, stateDisk, stateDiskMulti, statePartitionBoot, statePartitionRoot, stateLocale, stateKeymap, stateSSH, stateSummary, stateStorageMode, stateComplete, stateError:
 				return m, tea.Quit
 			}
 		case "enter":
@@ -115,7 +115,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.diskSelected[m.selectedIdx] = !m.diskSelected[m.selectedIdx]
 			}
 		case "up", "k":
-			if m.state == stateDisk || m.state == stateDiskMulti || m.state == stateLocale || m.state == stateKeymap || m.state == stateSSH || m.state == stateStorageMode {
+			if m.state == stateDisk || m.state == stateDiskMulti || m.state == statePartitionBoot || m.state == statePartitionRoot || m.state == stateLocale || m.state == stateKeymap || m.state == stateSSH || m.state == stateStorageMode {
 				if m.selectedIdx > 0 {
 					m.selectedIdx--
 				}
@@ -124,6 +124,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.state == stateDisk && m.selectedIdx < len(m.disks)-1 {
 				m.selectedIdx++
 			} else if m.state == stateDiskMulti && m.selectedIdx < len(m.disks)-1 {
+				m.selectedIdx++
+			} else if m.state == statePartitionBoot && m.selectedIdx < len(m.partitions)-1 {
+				m.selectedIdx++
+			} else if m.state == statePartitionRoot && m.selectedIdx < len(m.partitions)-1 {
 				m.selectedIdx++
 			} else if m.state == stateLocale && m.selectedIdx < len(m.locales)-1 {
 				m.selectedIdx++
@@ -397,20 +401,49 @@ func (m model) handleEnter() (tea.Model, tea.Cmd) {
 			m.config.Disk = m.disks[m.selectedIdx].Path
 			m.config.Disks = []string{m.config.Disk}
 			m.config.HostID = generateHostID()
-			if m.config.StorageMode.isEncrypted() {
+			if m.config.StorageMode.usesPartitions() {
+				// Partition mode: load partitions from selected disk, go to boot partition selection
+				m.partitions = getAvailablePartitions(m.config.Disk)
+				m.selectedIdx = 0
+				m.state = statePartitionBoot
+			} else if m.config.StorageMode.isEncrypted() {
 				m.state = statePassphrase
 				m.input.SetValue("")
 				m.input.Placeholder = "Enter ZFS encryption passphrase"
 				m.input.EchoMode = textinput.EchoPassword
 				m.input.EchoCharacter = '*'
 			} else {
-				// XFS mode: skip passphrase, go to locale
+				// XFS whole-disk mode: skip passphrase, go to locale
 				m.state = stateLocale
 				m.input.SetValue("")
 				m.input.EchoMode = textinput.EchoNormal
 				m.input.EchoCharacter = 0
 				m.selectedIdx = 0
 			}
+		}
+
+	case statePartitionBoot:
+		if len(m.partitions) > 0 {
+			m.config.BootPartition = m.partitions[m.selectedIdx].Path
+			m.err = nil
+			m.selectedIdx = 0
+			m.state = statePartitionRoot
+		}
+
+	case statePartitionRoot:
+		if len(m.partitions) > 0 {
+			selected := m.partitions[m.selectedIdx]
+			if selected.Path == m.config.BootPartition {
+				m.err = fmt.Errorf("root partition must be different from boot partition (%s)", m.config.BootPartition)
+				return m, nil
+			}
+			m.config.RootPartition = selected.Path
+			m.err = nil
+			m.state = stateLocale
+			m.input.SetValue("")
+			m.input.EchoMode = textinput.EchoNormal
+			m.input.EchoCharacter = 0
+			m.selectedIdx = 0
 		}
 
 	case stateDiskMulti:

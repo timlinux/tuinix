@@ -14,6 +14,7 @@ type storageMode int
 const (
 	storageZFSEncryptedSingle storageMode = iota // Encrypted ZFS, single disk (original)
 	storageXFS                                   // XFS unencrypted, single disk (max performance)
+	storageXFSPartition                          // XFS unencrypted, existing partition (dual-boot)
 	storageZFSStripe                             // Encrypted ZFS stripe, multi-disk (combined space)
 	storageZFSRaidz                              // Encrypted ZFS raidz, multi-disk (1 disk fault tolerance)
 	storageZFSRaidz2                             // Encrypted ZFS raidz2, multi-disk (2 disk fault tolerance)
@@ -24,7 +25,9 @@ func (s storageMode) String() string {
 	case storageZFSEncryptedSingle:
 		return "Encrypted ZFS (single disk)"
 	case storageXFS:
-		return "XFS unencrypted (max performance)"
+		return "XFS unencrypted (whole disk)"
+	case storageXFSPartition:
+		return "XFS unencrypted (existing partition)"
 	case storageZFSStripe:
 		return "Encrypted ZFS stripe (combined space)"
 	case storageZFSRaidz:
@@ -37,11 +40,15 @@ func (s storageMode) String() string {
 }
 
 func (s storageMode) isZFS() bool {
-	return s != storageXFS
+	return s != storageXFS && s != storageXFSPartition
 }
 
 func (s storageMode) isEncrypted() bool {
-	return s != storageXFS
+	return s != storageXFS && s != storageXFSPartition
+}
+
+func (s storageMode) usesPartitions() bool {
+	return s == storageXFSPartition
 }
 
 func (s storageMode) isMultiDisk() bool {
@@ -78,6 +85,8 @@ const (
 	stateStorageMode
 	stateDisk
 	stateDiskMulti
+	statePartitionBoot
+	statePartitionRoot
 	statePassphrase
 	statePassphraseConfirm
 	stateLocale
@@ -101,6 +110,7 @@ type stepInfo struct {
 var storageModes = []storageMode{
 	storageZFSEncryptedSingle,
 	storageXFS,
+	storageXFSPartition,
 	storageZFSStripe,
 	storageZFSRaidz,
 	storageZFSRaidz2,
@@ -108,7 +118,8 @@ var storageModes = []storageMode{
 
 var storageModeDescriptions = map[storageMode]string{
 	storageZFSEncryptedSingle: "Single disk with AES-256-GCM encryption, compression, and snapshots",
-	storageXFS:                "Single disk, no encryption. Maximum raw I/O performance",
+	storageXFS:                "Whole disk, no encryption. Maximum raw I/O performance",
+	storageXFSPartition:       "Install on existing partitions. For dual-boot or pre-partitioned disks",
 	storageZFSStripe:          "Multiple disks combined for maximum space (no redundancy)",
 	storageZFSRaidz:           "Multiple disks with single parity. Tolerates 1 disk failure (min 3 disks)",
 	storageZFSRaidz2:          "Multiple disks with double parity. Tolerates 2 disk failures (min 4 disks)",
@@ -205,7 +216,10 @@ Use only letters, numbers, and hyphens.`,
 Single disk options:
 • Encrypted ZFS - Secure, with snapshots
   and compression (recommended)
-• XFS - Maximum performance, no encryption
+• XFS (whole disk) - Maximum performance,
+  no encryption, erases entire disk
+• XFS (existing partition) - Install on
+  pre-existing partitions for dual-boot
 
 Multi-disk options (requires 2+ disks):
 • ZFS Stripe - Combines all disks into one
@@ -242,6 +256,36 @@ the EFI boot partition.
 
 Press Enter when done selecting.`,
 		stepNum: 8,
+	},
+	statePartitionBoot: {
+		title: "Boot Partition",
+		description: `Select the existing boot/ESP partition.
+
+This should be an EFI System Partition
+(typically formatted as FAT32/vfat).
+
+The boot partition will NOT be reformatted.
+It must already contain a valid filesystem.
+
+Look for partitions with type "vfat" or
+"EFI System" — they are typically 100MB
+to 1GB in size.`,
+		stepNum: 9,
+	},
+	statePartitionRoot: {
+		title: "Root Partition",
+		description: `Select the partition for the root filesystem.
+
+WARNING: This partition will be formatted
+with XFS! All existing data on this
+partition will be destroyed.
+
+Other partitions on the disk will NOT
+be touched.
+
+Choose a partition large enough for the
+operating system (minimum 20GB recommended).`,
+		stepNum: 10,
 	},
 	statePassphrase: {
 		title: "ZFS Encryption Passphrase",
@@ -389,6 +433,8 @@ type Config struct {
 	Locale        string
 	Keymap        string
 	ConsoleKeyMap string
+	EnableTUI     bool // Install TUI productivity suite
+	EnableGUI     bool // Install minimal GUI (Sway + Brave)
 	EnableSSH     bool
 	GitHubUser    string
 	SSHKeys       []string
@@ -400,6 +446,8 @@ type Config struct {
 	DisplayRes    string // Detected framebuffer resolution (e.g. "1920x1080")
 	ProjectRoot   string
 	WorkDir       string
+	BootPartition string // Boot/ESP partition path for partition mode
+	RootPartition string // Root partition path for partition mode
 }
 
 // Particle for fire effect
@@ -430,6 +478,13 @@ type diskInfo struct {
 	Model string
 }
 
+type partitionInfo struct {
+	Path   string // e.g., /dev/sda1
+	Size   string // human-readable size
+	FSType string // e.g., vfat, ext4, xfs, ""
+	Label  string // partition label (e.g., EFI System)
+}
+
 type keymapEntry struct {
 	Label      string // Display label (e.g. "us", "pt")
 	XKBLayout  string // X11/Wayland layout (e.g. "us", "pt")
@@ -447,6 +502,7 @@ type model struct {
 	viewport     viewport.Model
 	err          error
 	disks        []diskInfo
+	partitions   []partitionInfo // Available partitions on selected disk
 	selectedIdx  int
 	diskSelected []bool // For multi-disk selection (toggle with space)
 	locales      []string

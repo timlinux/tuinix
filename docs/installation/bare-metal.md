@@ -157,7 +157,7 @@ The interactive TUI installer will guide you through:
 
 ## Storage Modes
 
-The installer supports five storage modes:
+The installer supports six storage modes:
 
 ### Encrypted ZFS (single disk) -- recommended
 
@@ -171,6 +171,23 @@ A single disk with an EFI boot partition and an XFS root partition. No encryptio
 overhead. This gives maximum raw I/O performance and uses the latest available kernel
 (not constrained by ZFS compatibility). Choose this when performance matters more than
 encryption or ZFS features.
+
+### XFS unencrypted (existing partition) -- dual-boot
+
+Install tuinix on pre-existing partitions without erasing the entire disk. This is ideal
+for dual-boot setups or machines with a pre-partitioned disk layout. You select an existing
+boot/ESP partition and an existing root partition:
+
+- The **boot/ESP partition** is used as-is (not reformatted) -- it must already contain a valid FAT32 filesystem
+- The **root partition** is formatted with XFS -- all existing data on this partition will be destroyed
+- Other partitions on the disk are left untouched
+
+!!! tip "Preparing partitions"
+    Before running the installer, use a partitioning tool (e.g. `fdisk`, `gdisk`, or `parted`)
+    to create the partitions you need. You need at least:
+
+    - An EFI System Partition (ESP) of at least 100 MB, formatted as FAT32
+    - A root partition of at least 20 GB for the operating system
 
 ### Encrypted ZFS stripe (multi-disk) -- combined space
 
@@ -250,6 +267,17 @@ ZFS datasets created:
 |-----------|------|------------|---------|
 | ESP | 5 GB | FAT32 | EFI System Partition (`/boot`) |
 | Root | Remainder | XFS | Root filesystem (`/`) |
+
+### XFS unencrypted (existing partition)
+
+Uses pre-existing partitions selected by the user. Only the root partition is formatted.
+
+| Partition | Action | Filesystem | Purpose |
+|-----------|--------|------------|---------|
+| Boot/ESP (user-selected) | Mounted (not reformatted) | FAT32 | EFI System Partition (`/boot`) |
+| Root (user-selected) | Formatted with XFS | XFS | Root filesystem (`/`) |
+
+All other partitions on the disk remain untouched.
 
 ### Multi-disk ZFS (stripe, raidz, raidz2)
 

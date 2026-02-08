@@ -263,6 +263,16 @@ func generateHostConfig(c Config) error {
 		disksContent = strings.ReplaceAll(disksContent, "{{DISK_DEVICE}}", c.Disk)
 		disksContent = strings.ReplaceAll(disksContent, "{{SPACE_BOOT}}", c.SpaceBoot)
 
+	case storageXFSPartition:
+		templateFile := filepath.Join(workDir, "templates", "disko-xfs-partition.nix")
+		templateBytes, err := os.ReadFile(templateFile)
+		if err != nil {
+			return fmt.Errorf("read xfs partition template: %w", err)
+		}
+		disksContent = string(templateBytes)
+		disksContent = strings.ReplaceAll(disksContent, "{{ROOT_PARTITION}}", c.RootPartition)
+		disksContent = strings.ReplaceAll(disksContent, "{{BOOT_PARTITION}}", c.BootPartition)
+
 	case storageZFSEncryptedSingle:
 		templateFile := filepath.Join(workDir, "templates", "disko-template.nix")
 		templateBytes, err := os.ReadFile(templateFile)
