@@ -13,10 +13,6 @@ with lib;
     services.usbmuxd.enable = true;
 
     # Install iPhone tethering packages
-    environment.systemPackages = with pkgs; [
-      libimobiledevice
-      ifuse
-      usbmuxd
-    ];
+    environment.systemPackages = with pkgs; [ libimobiledevice ifuse usbmuxd ];
   };
 }

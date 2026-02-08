@@ -19,9 +19,10 @@
 
     # Kernel configuration - use latest ZFS-compatible kernel when ZFS is enabled,
     # otherwise use the default latest kernel for maximum performance
-    kernelPackages = if config.tuinix.zfs.enable
-      then config.boot.zfs.package.latestCompatibleLinuxPackages
-      else pkgs.linuxPackages_latest;
+    kernelPackages = if config.tuinix.zfs.enable then
+      config.boot.zfs.package.latestCompatibleLinuxPackages
+    else
+      pkgs.linuxPackages_latest;
 
     # Clean /tmp on boot
     tmp.cleanOnBoot = true;

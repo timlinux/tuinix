@@ -25,13 +25,14 @@
     # User-specific packages
     # Find package names at: https://search.nixos.org/packages
     # After adding packages, run: sudo nixos-rebuild switch --flake /home/tuinix#laptop
-    packages = with pkgs; [
-      # Example: eza - a modern replacement for ls
-      # eza
+    packages = with pkgs;
+      [
+        # Example: eza - a modern replacement for ls
+        # eza
 
-      # Add your packages below:
+        # Add your packages below:
 
-    ];
+      ];
   };
 
 }

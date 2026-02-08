@@ -4,10 +4,15 @@
 let
   # Get version info from build-info.txt or use defaults
   buildInfo = builtins.readFile ./build-info.txt;
-  versionLine = builtins.head (builtins.filter (l: builtins.match "Version:.*" l != null) (lib.splitString "\n" buildInfo));
-  commitLine = builtins.head (builtins.filter (l: builtins.match "Commit:.*" l != null) (lib.splitString "\n" buildInfo));
+  versionLine = builtins.head
+    (builtins.filter (l: builtins.match "Version:.*" l != null)
+      (lib.splitString "\n" buildInfo));
+  commitLine = builtins.head
+    (builtins.filter (l: builtins.match "Commit:.*" l != null)
+      (lib.splitString "\n" buildInfo));
   version = lib.removePrefix "Version: " versionLine;
-  commit = lib.removePrefix "Commit: " (builtins.head (lib.splitString " " commitLine));
+  commit = lib.removePrefix "Commit: "
+    (builtins.head (lib.splitString " " commitLine));
   versionString = "${version} (${commit})";
 
   # Build the Go TUI installer with version info
@@ -17,15 +22,12 @@ let
     src = ./cmd/installer;
     vendorHash = null;
     ldflags = [ "-s" "-w" ];
-    env = {
-      CGO_ENABLED = "0";
-    };
+    env = { CGO_ENABLED = "0"; };
     preBuild = ''
       echo "${versionString}" > version.txt
     '';
   };
-in
-{
+in {
   imports = [ (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix") ];
 
   # Include flake files and assets on the ISO
