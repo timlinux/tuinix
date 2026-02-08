@@ -44,7 +44,8 @@ func getAvailableDisks() []diskInfo {
 func getAvailablePartitions(disk string) []partitionInfo {
 	var partitions []partitionInfo
 
-	cmd := exec.Command("lsblk", "-n", "-o", "NAME,SIZE,TYPE,FSTYPE,PARTLABEL", disk)
+	// Use -p for full device paths and -l for flat list (no tree characters)
+	cmd := exec.Command("lsblk", "-n", "-l", "-p", "-o", "NAME,SIZE,TYPE,FSTYPE,PARTLABEL", disk)
 	output, err := cmd.Output()
 	if err != nil {
 		return []partitionInfo{{Path: disk + "1", Size: "500M", FSType: "vfat", Label: "EFI System"}}
@@ -63,7 +64,7 @@ func getAvailablePartitions(disk string) []partitionInfo {
 				label = strings.Join(fields[4:], " ")
 			}
 			partitions = append(partitions, partitionInfo{
-				Path:   "/dev/" + fields[0],
+				Path:   fields[0],
 				Size:   fields[1],
 				FSType: fsType,
 				Label:  label,
