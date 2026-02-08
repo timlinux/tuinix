@@ -52,7 +52,7 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           severity: warning
-          ignore_paths: ".git .github/workflows"
+          ignore_paths: ".git .github/workflows cmd/installer/vendor"
 
   markdown-quality:
     name: Markdown Quality
@@ -64,6 +64,7 @@ jobs:
         with:
           config: ".markdownlint.json"
           args: "**/*.md"
+          ignore: "**/vendor/**"
 
   python-quality:
     name: Python Quality
