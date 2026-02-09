@@ -389,7 +389,7 @@ func (m model) handleEnter() (tea.Model, tea.Cmd) {
 			m.err = fmt.Errorf("password must be at least 8 characters")
 			return m, nil
 		}
-		m.config.Password = val
+		m.config.Password = val // pragma: allowlist secret
 		m.err = nil
 		m.state = statePasswordConfirm
 		m.input.SetValue("")

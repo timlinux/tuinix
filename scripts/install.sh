@@ -342,7 +342,7 @@ generate_host_config() {
     extraGroups = [ "wheel" "networkmanager" "audio" "video" "docker" ];
     home = "/home/$USERNAME";
     createHome = true;
-    initialPassword = "changeme";
+    initialPassword = "changeme";  # pragma: allowlist secret
   };
 
   # Git configuration for $USERNAME
