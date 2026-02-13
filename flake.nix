@@ -178,14 +178,27 @@
 
         # ISO configurations for installation
         {
+          # x86_64 installer
           "installer" = nixpkgs.lib.nixosSystem {
-            inherit system;
+            system = "x86_64-linux";
             specialArgs = {
               inherit inputs;
               hostname = "nixos";
               inherit (nixpkgs) lib;
             };
-            modules = [ ./installer.nix ];
+            modules = [ (import ./installer.nix { system = "x86_64-linux"; }) ];
+          };
+
+          # aarch64 installer (for R36S and ARM devices)
+          "installer-aarch64" = nixpkgs.lib.nixosSystem {
+            system = "aarch64-linux";
+            specialArgs = {
+              inherit inputs;
+              hostname = "nixos";
+              inherit (nixpkgs) lib;
+            };
+            modules =
+              [ (import ./installer.nix { system = "aarch64-linux"; }) ];
           };
         };
 
