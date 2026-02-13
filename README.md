@@ -70,7 +70,9 @@ system with Nix installed) to build, test, and iterate.
 ```bash
 git clone https://github.com/timlinux/tuinix.git
 cd tuinix
-./scripts/build-iso.sh          # Build the ISO
+./scripts/build-iso.sh          # Build x86_64 ISO (default)
+./scripts/build-iso.sh aarch64  # Build aarch64 ISO (R36S, ARM)
+./scripts/build-iso.sh both     # Build both architectures
 ./scripts/run-vm.sh iso         # Test in a VM
 nix flake check                 # Validate the flake
 ```

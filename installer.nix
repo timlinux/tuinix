@@ -1,4 +1,7 @@
 # tuinix installer ISO configuration
+# This is a function that takes { system } and returns a NixOS module
+{ system ? "x86_64-linux" }:
+
 { config, lib, pkgs, modulesPath, ... }:
 
 let
@@ -71,31 +74,33 @@ in {
   ];
 
   # Packages for installation environment - minimal set, no X11/GUI deps
-  environment.systemPackages = with pkgs; [
-    tuinix-installer
-    git
-    vim
-    nano
-    curl
-    wget
-    parted
-    gptfdisk
-    e2fsprogs
-    dosfstools
-    xfsprogs
-    zfs
-    disko
-    gum
-    catimg
-    bc
-    nixos-install-tools
-    mkpasswd
-    util-linux
-    # iPhone USB tethering support
-    libimobiledevice
-    ifuse
-    usbmuxd
-  ];
+  environment.systemPackages = with pkgs;
+    [
+      tuinix-installer
+      git
+      vim
+      nano
+      curl
+      wget
+      parted
+      gptfdisk
+      e2fsprogs
+      dosfstools
+      xfsprogs
+      disko
+      gum
+      catimg
+      bc
+      nixos-install-tools
+      mkpasswd
+      util-linux
+      # iPhone USB tethering support
+      libimobiledevice
+      ifuse
+      usbmuxd
+    ]
+    # ZFS only on x86_64 (better supported and needed for laptop config)
+    ++ lib.optionals (system == "x86_64-linux") [ zfs ];
 
   # Enable SSH
   services.openssh.enable = true;

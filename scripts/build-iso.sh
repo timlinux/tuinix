@@ -1,13 +1,31 @@
 #!/usr/bin/env bash
-# Build bootable ISO for tuinix laptop profile
+# Build bootable ISO for tuinix
+# Supports both x86_64 (laptop) and aarch64 (R36S) architectures
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# Architecture selection - defaults to x86_64
+# Options: x86_64, aarch64, both
+ARCH="${1:-x86_64}"
+
 # Version for ISO naming - defaults to latest git tag or 'dev'
 VERSION="${TUINIX_VERSION:-$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")}"
+
+# Validate architecture argument
+case "$ARCH" in
+  x86_64|aarch64|both)
+    ;;
+  *)
+    echo "Usage: $0 [x86_64|aarch64|both]"
+    echo "  x86_64  - Build ISO for x86_64 systems (laptop, default)"
+    echo "  aarch64 - Build ISO for aarch64 systems (R36S)"
+    echo "  both    - Build ISOs for both architectures"
+    exit 1
+    ;;
+esac
 
 # Check if gum is available
 if ! command -v gum >/dev/null 2>&1; then
@@ -25,7 +43,8 @@ gum style \
   "" \
   "Building bootable ISO with embedded flake" \
   "Working directory: $PROJECT_ROOT" \
-  "Version: $VERSION"
+  "Version: $VERSION" \
+  "Architecture: $ARCH"
 
 cd "$PROJECT_ROOT"
 
@@ -152,98 +171,138 @@ else
   exit 1
 fi
 
-# Build the ISO
-gum style \
-  --foreground="#e95420" \
-  --border="rounded" \
-  --padding="1" \
-  "🏗️  tuinix ISO Build" \
-  "" \
-  "Starting comprehensive build process..." \
-  "This may take 10-30 minutes depending on your system"
-
-echo ""
-
-# Use gum's simple and reliable spinner
-if ! gum spin --spinner="dot" --title="Building ISO image (this may take a while)..." --show-output -- nix build .#nixosConfigurations.installer.config.system.build.isoImage; then
-  echo ""
-  gum style --foreground="#ff0000" --border="rounded" --padding="1" "❌ ISO build failed!" "Check the output above for error details."
-  exit 1
-fi
-
-echo ""
-gum style --foreground="#00cc00" "🎉 ISO build completed successfully!"
-
-# Check if build was successful
-if [[ -L "result" && -d "result/iso" ]]; then
-  # Find ISO file (either .iso or .iso.zst)
-  ISO_PATH=$(find result/iso -name "*.iso" -o -name "*.iso.zst" | head -1)
-  ISO_NAME=$(basename "$ISO_PATH")
-
-  gum style \
-    --foreground="#00cc00" \
-    --border="rounded" \
-    --padding="1" \
-    "✅ ISO built successfully!" \
-    "" \
-    "📀 ISO location: $ISO_PATH" \
-    "📁 ISO name: $ISO_NAME"
-
-  # Determine final ISO name
-  FINAL_ISO_NAME="tuinix.${VERSION}.iso"
-  if [[ -f "./$FINAL_ISO_NAME" ]]; then
-    gum style --foreground="#ffaa00" "⚠️  Removing existing ISO: ./$FINAL_ISO_NAME"
-    sudo rm "./$FINAL_ISO_NAME"
-  fi
-
-  if [[ "$ISO_PATH" == *.zst ]]; then
-    gum style --foreground="#0066cc" "📦 Decompressing ISO..."
-    TEMP_ISO_NAME="${ISO_NAME%.zst}"
-    gum spin --spinner="dot" --title="Decompressing..." -- zstd -d "$ISO_PATH" -o "./$TEMP_ISO_NAME"
-
-    # Validate the decompressed ISO
-    if validate_iso "./$TEMP_ISO_NAME"; then
-      # Rename to final name
-      mv "./$TEMP_ISO_NAME" "./$FINAL_ISO_NAME"
-      gum style --foreground="#00cc00" "✅ ISO created and validated: ./$FINAL_ISO_NAME"
-    else
-      gum style --foreground="#ff0000" "❌ ISO validation failed - removing invalid ISO"
-      rm -f "./$TEMP_ISO_NAME"
-      exit 1
-    fi
-  else
-    gum style --foreground="#0066cc" "📋 Copying ISO..."
-    gum spin --spinner="dot" --title="Copying..." -- cp "$ISO_PATH" "./$FINAL_ISO_NAME"
-
-    # Validate the copied ISO
-    if validate_iso "./$FINAL_ISO_NAME"; then
-      gum style --foreground="#00cc00" "✅ ISO created and validated: ./$FINAL_ISO_NAME"
-    else
-      gum style --foreground="#ff0000" "❌ ISO validation failed - removing invalid ISO"
-      rm -f "./$FINAL_ISO_NAME"
-      exit 1
-    fi
-  fi
-
-  # Show final information
-  ISO_SIZE=$(du -h "./$FINAL_ISO_NAME" | cut -f1)
+# Function to build ISO for a specific architecture
+build_iso_for_arch() {
+  local target_arch="$1"
+  local installer_name="installer-${target_arch}"
+  local final_iso_name="tuinix.${VERSION}.${target_arch}.iso"
 
   gum style \
     --foreground="#e95420" \
     --border="rounded" \
     --padding="1" \
-    --margin="1" \
-    "🎉 ISO Build Complete!" \
+    "🏗️  tuinix ISO Build ($target_arch)" \
     "" \
-    "📊 ISO Information:" \
-    "  📁 Name: $FINAL_ISO_NAME" \
-    "  📏 Size: $ISO_SIZE" \
-    "  🏷️  Version: $VERSION" \
-    "" \
-    "💾 To create a bootable USB:" \
-    "  sudo dd if=./$FINAL_ISO_NAME of=/dev/sdX bs=4M status=progress" \
-    "  (Replace /dev/sdX with your USB device)"
-else
-  gum style --foreground="#ff0000" "❌ ISO build failed or result not found"
+    "Starting comprehensive build process..." \
+    "This may take 10-30 minutes depending on your system"
+
+  echo ""
+
+  # Use gum's simple and reliable spinner
+  if ! gum spin --spinner="dot" --title="Building $target_arch ISO image (this may take a while)..." --show-output -- nix build ".#nixosConfigurations.${installer_name}.config.system.build.isoImage"; then
+    echo ""
+    gum style --foreground="#ff0000" --border="rounded" --padding="1" "❌ ISO build failed for $target_arch!" "Check the output above for error details."
+    return 1
+  fi
+
+  echo ""
+  gum style --foreground="#00cc00" "🎉 ISO build completed successfully for $target_arch!"
+
+  # Check if build was successful
+  if [[ -L "result" && -d "result/iso" ]]; then
+    # Find ISO file (either .iso or .iso.zst)
+    ISO_PATH=$(find result/iso -name "*.iso" -o -name "*.iso.zst" | head -1)
+    ISO_NAME=$(basename "$ISO_PATH")
+
+    gum style \
+      --foreground="#00cc00" \
+      --border="rounded" \
+      --padding="1" \
+      "✅ ISO built successfully!" \
+      "" \
+      "📀 ISO location: $ISO_PATH" \
+      "📁 ISO name: $ISO_NAME"
+
+    # Remove existing ISO if present
+    if [[ -f "./$final_iso_name" ]]; then
+      gum style --foreground="#ffaa00" "⚠️  Removing existing ISO: ./$final_iso_name"
+      sudo rm "./$final_iso_name"
+    fi
+
+    if [[ "$ISO_PATH" == *.zst ]]; then
+      gum style --foreground="#0066cc" "📦 Decompressing ISO..."
+      TEMP_ISO_NAME="${ISO_NAME%.zst}"
+      gum spin --spinner="dot" --title="Decompressing..." -- zstd -d "$ISO_PATH" -o "./$TEMP_ISO_NAME"
+
+      # Validate the decompressed ISO
+      if validate_iso "./$TEMP_ISO_NAME"; then
+        # Rename to final name
+        mv "./$TEMP_ISO_NAME" "./$final_iso_name"
+        gum style --foreground="#00cc00" "✅ ISO created and validated: ./$final_iso_name"
+      else
+        gum style --foreground="#ff0000" "❌ ISO validation failed - removing invalid ISO"
+        rm -f "./$TEMP_ISO_NAME"
+        return 1
+      fi
+    else
+      gum style --foreground="#0066cc" "📋 Copying ISO..."
+      gum spin --spinner="dot" --title="Copying..." -- cp "$ISO_PATH" "./$final_iso_name"
+
+      # Validate the copied ISO
+      if validate_iso "./$final_iso_name"; then
+        gum style --foreground="#00cc00" "✅ ISO created and validated: ./$final_iso_name"
+      else
+        gum style --foreground="#ff0000" "❌ ISO validation failed - removing invalid ISO"
+        rm -f "./$final_iso_name"
+        return 1
+      fi
+    fi
+
+    # Show final information
+    ISO_SIZE=$(du -h "./$final_iso_name" | cut -f1)
+
+    gum style \
+      --foreground="#e95420" \
+      --border="rounded" \
+      --padding="1" \
+      --margin="1" \
+      "🎉 ISO Build Complete ($target_arch)!" \
+      "" \
+      "📊 ISO Information:" \
+      "  📁 Name: $final_iso_name" \
+      "  📏 Size: $ISO_SIZE" \
+      "  🏷️  Version: $VERSION" \
+      "" \
+      "💾 To create a bootable USB:" \
+      "  sudo dd if=./$final_iso_name of=/dev/sdX bs=4M status=progress" \
+      "  (Replace /dev/sdX with your USB device)"
+
+    # Clean up result symlink for next build
+    rm -f result
+
+    return 0
+  else
+    gum style --foreground="#ff0000" "❌ ISO build failed or result not found for $target_arch"
+    return 1
+  fi
+}
+
+# Build ISOs based on architecture selection
+build_failed=0
+
+case "$ARCH" in
+  x86_64)
+    build_iso_for_arch "x86_64" || build_failed=1
+    ;;
+  aarch64)
+    build_iso_for_arch "aarch64" || build_failed=1
+    ;;
+  both)
+    gum style --foreground="#0066cc" "Building ISOs for both architectures..."
+    echo ""
+    build_iso_for_arch "x86_64" || build_failed=1
+    echo ""
+    build_iso_for_arch "aarch64" || build_failed=1
+    ;;
+esac
+
+if [[ $build_failed -eq 1 ]]; then
+  gum style --foreground="#ff0000" "❌ One or more ISO builds failed"
   exit 1
 fi
+
+gum style \
+  --foreground="#00cc00" \
+  --border="rounded" \
+  --padding="1" \
+  "🎉 All ISO builds completed successfully!"

@@ -2,7 +2,16 @@
 
 This guide covers installing tuinix on a real physical machine.
 
+## Supported Platforms
+
+tuinix supports two architectures:
+
+- **x86_64** - Standard laptops, desktops, and servers
+- **aarch64** - ARM64 devices like R36S handheld, Raspberry Pi 4/5
+
 ## Hardware Requirements
+
+### x86_64 Systems
 
 | Resource | Minimum | Recommended |
 |----------|---------|-------------|
@@ -11,21 +20,35 @@ This guide covers installing tuinix on a real physical machine.
 | Storage | 20 GB | 50 GB+ (SSD strongly recommended) |
 | Boot mode | UEFI | UEFI |
 
+### aarch64 Systems (R36S, ARM)
+
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| CPU | ARM64 | Cortex-A53 or better |
+| RAM | 1 GB | 2 GB+ |
+| Storage | 8 GB | 32 GB+ (SD card or eMMC) |
+| Boot mode | UEFI | UEFI |
+
 !!! warning "UEFI and Secure Boot"
     tuinix requires UEFI boot. Legacy BIOS is not supported.
-    Secure Boot must be disabled when using ZFS because ZFS kernel
-    modules are unsigned.
+    On x86_64 systems with ZFS, Secure Boot must be disabled because
+    ZFS kernel modules are unsigned.
 
 ## Step 1: Get the ISO
 
-Download the latest ISO from the
+Download the latest ISO for your architecture from the
 [releases page]({{ iso.releases_url }}) ({{ iso.version }}),
 or build it yourself:
 
 ```bash
 git clone https://github.com/timlinux/tuinix.git
 cd tuinix
+
+# For x86_64 (laptops, desktops)
 ./scripts/build-iso.sh
+
+# For aarch64 (R36S, ARM devices)
+./scripts/build-iso.sh aarch64
 ```
 
 The ISO includes the installer and system configuration. An internet

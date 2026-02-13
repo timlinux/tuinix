@@ -2,5 +2,5 @@
 { lib, ... }:
 
 {
-  imports = [ ./boot.nix ./nix-settings.nix ./zfs.nix ];
+  imports = [ ./boot.nix ./nix-settings.nix ./zfs.nix ./emulation.nix ];
 }

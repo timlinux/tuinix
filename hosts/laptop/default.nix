@@ -14,5 +14,8 @@
   # Enable ZFS support (required for ZFS root filesystem)
   tuinix.zfs.enable = true;
 
+  # Enable aarch64 emulation for cross-compiling R36S builds
+  tuinix.emulation.enable = true;
+
   system.stateVersion = "25.11";
 }

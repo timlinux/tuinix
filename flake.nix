@@ -21,9 +21,16 @@
   outputs = { self, nixpkgs, nixos-hardware, disko, home-manager, flake-utils
     , ... }@inputs:
     let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+      # Default system for dev shell and tools
+      defaultSystem = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${defaultSystem};
       lib = nixpkgs.lib;
+
+      # Map of host names to their architectures
+      hostSystems = {
+        laptop = "x86_64-linux";
+        r36s = "aarch64-linux";
+      };
 
       # Dynamically discover hosts from the hosts directory
       hostsDir = ./hosts;
@@ -31,7 +38,9 @@
 
       # Helper function to create NixOS configurations
       mkNixosConfig = hostname: extraModules:
-        nixpkgs.lib.nixosSystem {
+        let
+          system = hostSystems.${hostname} or defaultSystem;
+        in nixpkgs.lib.nixosSystem {
           inherit system;
           specialArgs = {
             inherit inputs hostname;
@@ -48,6 +57,18 @@
       # Generate configurations for all discovered hosts
       mkHostConfigs = extraModules:
         lib.genAttrs hostNames (hostname: mkNixosConfig hostname extraModules);
+
+      # Helper to create installer configuration for a specific architecture
+      mkInstallerConfig = system:
+        nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {
+            inherit inputs;
+            hostname = "nixos";
+            inherit (nixpkgs) lib;
+          };
+          modules = [ (import ./installer.nix { inherit system; }) ];
+        };
 
       # Development tools for the flake environment
       devTools = with pkgs; [
@@ -163,10 +184,11 @@
           in (mkNixosConfig hostname [ ./profiles/vm ]).config.system.build.vm))
         //
 
-        # ISO images (only for configurations that have ISO support)
-        (lib.mapAttrs' (hostname: config:
-          lib.nameValuePair "${hostname}" config.config.system.build.isoImage)
-          (lib.filterAttrs (name: _: lib.hasPrefix "iso-" name)
+        # ISO images (for configurations starting with "iso-" or "installer-")
+        (lib.mapAttrs' (name: config:
+          lib.nameValuePair name config.config.system.build.isoImage)
+          (lib.filterAttrs
+            (name: _: lib.hasPrefix "iso-" name || lib.hasPrefix "installer-" name)
             self.nixosConfigurations));
 
     }) // {
@@ -176,17 +198,12 @@
         # Regular host configurations
         (mkHostConfigs [ ]) //
 
-        # ISO configurations for installation
+        # ISO configurations for installation (x86_64 and aarch64)
         {
-          "installer" = nixpkgs.lib.nixosSystem {
-            inherit system;
-            specialArgs = {
-              inherit inputs;
-              hostname = "nixos";
-              inherit (nixpkgs) lib;
-            };
-            modules = [ ./installer.nix ];
-          };
+          "installer-x86_64" = mkInstallerConfig "x86_64-linux";
+          "installer-aarch64" = mkInstallerConfig "aarch64-linux";
+          # Legacy alias for backwards compatibility
+          "installer" = mkInstallerConfig "x86_64-linux";
         };
 
     };
