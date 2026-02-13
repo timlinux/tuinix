@@ -89,3 +89,6 @@ iso-inventory.txt
 
 # Claude settings
 .claude/settings.local.json
+
+# Firmware binaries (extracted from devices)
+firmware/
