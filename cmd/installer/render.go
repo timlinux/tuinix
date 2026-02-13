@@ -353,6 +353,7 @@ func (m model) getInstallStepNames() []string {
 			"Formatting root partition with XFS",
 			"Generating hardware configuration",
 			"Installing NixOS",
+			"Reinstalling GRUB bootloader",
 			"Copying flake to new system",
 			"Setting up user flake",
 			"Copying install log",
