@@ -5,10 +5,11 @@ and all packages needed for a complete offline installation.
 
 ## Supported Architectures
 
-| Architecture | ISO | Target Devices |
-|--------------|-----|----------------|
-| x86_64 | `tuinix.VERSION.x86_64.iso` | Standard PCs, laptops, servers |
-| aarch64 | `tuinix.VERSION.aarch64.iso` | ARM64 devices with UEFI boot |
+| Architecture | Image Type | Target Devices |
+|--------------|------------|----------------|
+| x86_64 | ISO | Standard PCs, laptops, servers |
+| aarch64 | ISO | ARM64 devices with UEFI boot |
+| armv7l | SD Image | R36S handheld (Allwinner A33) |
 
 ## Installation Modes
 
@@ -53,6 +54,7 @@ cd tuinix
 |--------|-------|
 | Physical machine | [Bare Metal Installation](bare-metal.md) |
 | QEMU, virt-manager, VirtualBox | [VM Installation](vm.md) |
+| R36S Handheld (Allwinner A33) | [R36S Installation](r36s.md) |
 
 ## Requirements
 

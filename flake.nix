@@ -158,16 +158,28 @@
       # Packages
       packages =
         # VM runners for each host (with VM-specific overrides)
-        (lib.genAttrs (map (name: "vm-${name}") hostNames) (vmName:
-          let hostname = lib.removePrefix "vm-" vmName;
-          in (mkNixosConfig hostname [ ./profiles/vm ]).config.system.build.vm))
+        # Only generate VMs for x86_64 hosts (skip r36s which is armv7l)
+        (lib.genAttrs
+          (map (name: "vm-${name}")
+            (builtins.filter (name: name != "r36s") hostNames))
+          (vmName:
+            let hostname = lib.removePrefix "vm-" vmName;
+            in (mkNixosConfig hostname [ ./profiles/vm ]).config.system.build.vm))
         //
 
         # ISO images (only for configurations that have ISO support)
         (lib.mapAttrs' (hostname: config:
           lib.nameValuePair "${hostname}" config.config.system.build.isoImage)
           (lib.filterAttrs (name: _: lib.hasPrefix "iso-" name)
-            self.nixosConfigurations));
+            self.nixosConfigurations))
+        //
+
+        # SD images for R36S (built from r36s nixosConfiguration)
+        (let
+          r36sConfig = self.nixosConfigurations.r36s or null;
+        in if r36sConfig != null && r36sConfig.config ? system.build.sdImage
+           then { "sd-r36s" = r36sConfig.config.system.build.sdImage; }
+           else { });
 
     }) // {
 
@@ -242,9 +254,36 @@
         # Reference configs for each architecture
         referenceX86 = mkReferenceConfig "x86_64-linux";
         referenceAarch64 = mkReferenceConfig "aarch64-linux";
+
+        # Hosts that need different architectures
+        # r36s uses armv7l (32-bit ARM) due to Allwinner A33 SoC
+        specialArchHosts = {
+          "r36s" = "armv7l-linux";
+        };
+
+        # Filter out special arch hosts from dynamic discovery
+        standardHostNames = builtins.filter
+          (name: !(builtins.hasAttr name specialArchHosts))
+          hostNames;
       in
-        # Regular host configurations
-        (mkHostConfigs [ ]) //
+        # Regular host configurations (x86_64)
+        (lib.genAttrs standardHostNames
+          (hostname: mkNixosConfig hostname [ ])) //
+
+        # Special architecture hosts (like r36s with armv7l)
+        (lib.mapAttrs (hostname: archSystem:
+          nixpkgs.lib.nixosSystem {
+            system = archSystem;
+            specialArgs = {
+              inherit inputs hostname;
+              inherit (nixpkgs) lib;
+            };
+            modules = [
+              # Don't include disko or home-manager for minimal embedded systems
+              ./modules
+              (hostsDir + "/${hostname}")
+            ];
+          }) specialArchHosts) //
 
         # ISO configurations for installation
         {

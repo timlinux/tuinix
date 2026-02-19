@@ -8,16 +8,17 @@ tuinix is a NixOS-based distribution designed for users who prefer a terminal-on
 
 ## Supported Architectures
 
-| Architecture | ISO Name | Target Devices | Status |
-|--------------|----------|----------------|--------|
-| x86_64-linux | `tuinix.VERSION.x86_64.iso` | Standard PCs, laptops, servers | Fully supported |
-| aarch64-linux | `tuinix.VERSION.aarch64.iso` | ARM64 laptops, servers, SBCs with UEFI | Supported |
+| Architecture | Image Type | Target Devices | Status |
+|--------------|------------|----------------|--------|
+| x86_64-linux | ISO | Standard PCs, laptops, servers | Fully supported |
+| aarch64-linux | ISO | ARM64 laptops, servers, SBCs with UEFI | Supported |
+| armv7l-linux | SD Image | R36S handheld (Allwinner A33) | Supported |
 
 ### Architecture Notes
 
 - **x86_64**: Primary development platform. Includes ZFS support.
 - **aarch64**: Supports UEFI-capable ARM64 devices. ZFS excluded due to compatibility.
-- **R36S/Rockchip**: Planned support via SD card images (see `docs/r36s-build-notes.md`)
+- **armv7l/R36S**: Uses stock vendor kernel (3.4.39) with NixOS userspace. See `docs/r36s-build-notes.md`
 
 ## Installation Modes
 
@@ -217,9 +218,21 @@ tuinix/
 | Configuration | Description |
 |---------------|-------------|
 | `laptop` | Example laptop with ZFS, NetworkManager |
-| `r36s` | R36S handheld (aarch64, no ZFS) |
+| `r36s` | R36S handheld (armv7l, stock kernel, SD image) |
 | `installer` | x86_64 installation ISO |
 | `installer-aarch64` | aarch64 installation ISO |
+
+### R36S SD Image Build
+
+```bash
+# Build the R36S SD card image
+nix build .#sd-r36s
+
+# Flash to SD card
+sudo dd if=result of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+Requires extracted stock firmware. See `docs/installation/r36s.md` for details.
 
 ## Module Options
 

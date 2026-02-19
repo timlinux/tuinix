@@ -1,12 +1,16 @@
 # Boot configuration
 { config, lib, pkgs, ... }:
 
+let
+  # Check if we're on x86_64 (desktop/laptop systems)
+  isX86 = pkgs.stdenv.hostPlatform.isx86_64;
+in
 {
-  # Boot loader configuration
-  boot = {
+  # Boot loader configuration - only for x86 systems
+  boot = lib.mkIf isX86 {
     loader = {
       grub = {
-        enable = true;
+        enable = lib.mkDefault true;
         device = "nodev";
         efiInstallAsRemovable = true;
         efiSupport = true;
@@ -30,7 +34,7 @@
     # Enable Plymouth for boot splash
     plymouth.enable = false; # Keep minimal for terminal-only
 
-    # Kernel modules for initrd
+    # Kernel modules for initrd (x86 specific)
     initrd.availableKernelModules = [
       "ahci"
       "xhci_pci"
