@@ -1,6 +1,6 @@
 tuinix Build Information
 ==============================
-Version: v0.5.0-20-g5fa77f5-dirty
-Build Date: 2026-02-14 21:57:48 UTC
-Commit: 5fa77f5 (feature/r36s-support)
+Version: v0.6.0
+Build Date: 2026-02-19
+Commit: 3cdb4a7 (main)
 Builder: timlinux@abyss-laptop
