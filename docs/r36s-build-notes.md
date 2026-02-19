@@ -327,10 +327,336 @@ Config: Uses Allwinner script.bin (not Device Tree)
 - These projects may have R36S-specific patches
 - Check: https://github.com/JustEnoughLinuxOS/distribution
 
-## Next Steps
+## Initramfs Analysis
 
-1. **Verify architecture**: Confirm if NixOS armv7l is feasible on this device
-2. **Research mainline support**: Check linux-sunxi wiki for A33 status
-3. **Extract/document script.bin**: May contain display panel info
-4. **Test with stock kernel**: Try booting NixOS rootfs with vendor kernel first
-5. **Find R36S DTB**: Search community projects for device tree
+The stock ramdisk is a gzip-compressed cpio archive containing a BusyBox-based init system.
+
+### Ramdisk Structure
+
+```
+/
+├── bin/           # BusyBox symlinks
+├── dev/           # Device nodes
+├── etc/           # Minimal config
+├── functions      # Shell helper functions
+├── init           # Main init script (43KB shell script)
+├── lib/           # Minimal libraries
+├── mnt/           # Mount points
+├── proc/          # Proc mountpoint
+├── root/          # Root home
+├── sbin/          # System binaries
+├── sys/           # Sysfs mountpoint
+└── usr/           # Additional utilities
+```
+
+### Init Script Boot Flow
+
+The `/init` script performs:
+
+1. **Early mounts**: `/proc`, `/sys`, `/dev` (devtmpfs), `/run` (tmpfs)
+2. **Parse cmdline**: Extracts `root=`, `disk=`, `init=` parameters
+3. **Mount flash**: Mounts FAT partition (sdb7) to `/flash`
+4. **Mount SYSTEM**: Loop-mounts `/flash/SYSTEM` squashfs to `/sysroot`
+5. **Mount storage**: Mounts ext4 partition (sdb8) to `/sysroot/storage`
+6. **Switch root**: `exec busybox switch_root /sysroot /usr/lib/systemd/systemd`
+
+### Key Kernel Parameters (from cmdline)
+
+| Parameter | Stock Value | Purpose |
+|-----------|-------------|---------|
+| `console` | `ttyS2,115200` | Serial debug console |
+| `root` | `/dev/mmcblk0p7` | FAT partition with SYSTEM |
+| `init` | `/init` | Ramdisk init script |
+| `disk` | `/dev/mmcblk0p8` | Storage partition |
+| `loglevel` | `0` | Quiet boot (no kernel messages) |
+
+## SYSTEM Squashfs Analysis
+
+### OS Information
+
+```
+NAME="EmuELEC"
+VERSION="4.7-Nexus_devel_20251120145101"
+VERSION_ID="4.7"
+LIBREELEC_PROJECT="Allwinner"
+COREELEC_DEVICE="A33"
+```
+
+### Filesystem Layout
+
+```
+/sysroot/                    # After switch_root becomes /
+├── bin -> /usr/bin          # Symlink
+├── lib -> /usr/lib          # Symlink
+├── sbin -> /usr/sbin        # Symlink
+├── usr/
+│   ├── bin/                 # All binaries
+│   ├── lib/
+│   │   └── systemd/         # systemd 252
+│   │       └── systemd      # PID 1 after switch_root
+│   └── share/
+├── etc/                     # Config (some symlinked to /storage)
+├── storage/                 # Mountpoint for sdb8
+├── flash/                   # Mountpoint for sdb7 (FAT with SYSTEM)
+├── ee_arch                  # Contains "A33"
+└── emuelec -> /storage/.config/emuelec
+```
+
+### Systemd Version
+
+The SYSTEM uses **systemd 252** with standard service units.
+
+## Required Kernel Modules
+
+The stock SYSTEM includes these proprietary/vendor modules that must be loaded for hardware to work:
+
+| Module | Size | Purpose | Vermagic |
+|--------|------|---------|----------|
+| `mali.ko` | 3.3MB | Mali-400 GPU driver | 3.4.39 SMP preempt ARMv7 |
+| `disp.ko` | 4.9MB | Display driver (Allwinner) | 3.4.39 SMP preempt ARMv7 |
+| `lcd.ko` | 1.5MB | LCD panel driver | 3.4.39 SMP preempt ARMv7 |
+| `gpio-sunxi.ko` | 84KB | GPIO driver | 3.4.39 SMP preempt ARMv7 |
+| `udt_joystick.ko` | 116KB | Joystick/gamepad driver | 3.4.39 SMP preempt ARMv7 |
+| `cdc_ether.ko` | 181KB | USB CDC Ethernet | 3.4.39 SMP preempt ARMv7 |
+| `meig_cdc_driver.ko` | 353KB | USB CDC driver | 3.4.39 SMP preempt ARMv7 |
+
+### Module Loading
+
+Modules are loaded by `/usr/bin/emuelec_autostart.sh`:
+
+```bash
+# Display modules (loaded by lsb_release script)
+insmod /usr/lib/modules/disp.ko
+insmod /usr/lib/modules/lcd.ko
+insmod /usr/lib/modules/mali.ko
+
+# Input/GPIO modules (loaded by autostart)
+insmod /usr/lib/modules/gpio-sunxi.ko
+insmod /usr/lib/modules/udt_joystick.ko
+```
+
+### Critical Note for NixOS
+
+These modules have `vermagic=3.4.39 SMP preempt mod_unload modversions ARMv7 p2v8`.
+
+**For NixOS to use these modules, we must:**
+1. Copy the stock `.ko` files to NixOS
+2. NOT build our own kernel modules (vermagic mismatch)
+3. Use the stock kernel (boot.img) unmodified
+
+## NixOS Integration Strategy
+
+### Recommended: SYSTEM Squashfs Replacement
+
+The cleanest approach is to replace the SYSTEM squashfs while keeping the boot infrastructure:
+
+**Keep unchanged**:
+- sdb2: Boot assets (bootlogo, fonts)
+- sdb5: U-Boot environment
+- sdb6: Android boot.img (vendor kernel 3.4.39)
+
+**Replace**:
+- sdb7: `/flash/SYSTEM` - Replace with NixOS squashfs
+
+**Reuse**:
+- sdb8: `/storage` - Can keep for persistent data
+
+### NixOS Requirements for Compatibility
+
+For NixOS to work as a SYSTEM replacement:
+
+1. **Squashfs format**: Build NixOS as squashfs image
+2. **Init location**: `/usr/lib/systemd/systemd` must be the init binary
+3. **Architecture**: armv7l-linux (NOT aarch64)
+4. **Kernel modules**: Must work with stock 3.4.39 kernel (may be problematic)
+
+### Kernel Module Compatibility Issue
+
+The stock kernel 3.4.39 was built with GCC 4.6.3. NixOS modules would be built with modern GCC.
+This creates a **vermagic mismatch** - kernel will refuse to load NixOS-built modules.
+
+**Solutions**:
+1. Use only built-in kernel features (no loadable modules)
+2. Build modules with matching toolchain (complex)
+3. Use mainline kernel (lose some hardware support)
+
+## Building the R36S SD Image
+
+### Prerequisites
+
+Before building, you must extract firmware from a stock R36S SD card:
+
+```bash
+# Insert stock R36S SD card (appears as /dev/sdX)
+SD=/dev/sdX
+
+# Create firmware directory
+mkdir -p firmware/r36s/modules
+
+# Extract bootloader region (MBR + U-Boot)
+sudo dd if=$SD of=firmware/r36s/bootloader-region.bin bs=512 count=73728
+
+# Extract boot assets partition
+sudo dd if=${SD}2 of=firmware/r36s/boot-assets.img bs=1M
+
+# Extract U-Boot environment
+sudo dd if=${SD}5 of=firmware/r36s/uboot-env.bin bs=1M
+
+# Extract kernel boot.img
+sudo dd if=${SD}6 of=firmware/r36s/boot.img bs=1M
+
+# Mount SYSTEM and extract kernel modules
+sudo mkdir -p /mnt/r36s-system
+sudo mount -o loop /mnt/r36s-emuelec/SYSTEM /mnt/r36s-system
+sudo cp /mnt/r36s-system/usr/lib/modules/*.ko firmware/r36s/modules/
+sudo umount /mnt/r36s-system
+```
+
+### Build Command
+
+```bash
+# Build the R36S SD card image
+nix build .#sd-r36s
+
+# The resulting image will be in result/
+```
+
+### Flashing the Image
+
+```bash
+# Flash to SD card (replace /dev/sdX with your SD card)
+sudo dd if=result of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+## Setting Up the Development Host for Cross-Architecture Builds
+
+Building tuinix images for different architectures (aarch64 for ISO, armv7l for R36S) requires QEMU binfmt emulation. This allows your x86_64 machine to transparently execute ARM binaries during the build process.
+
+### Prerequisites
+
+Your NixOS development machine needs two configurations:
+
+#### 1. Enable binfmt Emulation
+
+Add this to your NixOS configuration (e.g., in `profiles/common.nix` or your host configuration):
+
+```nix
+{
+  # Enable QEMU binfmt emulation for cross-architecture builds
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" "armv7l-linux" ];
+}
+```
+
+#### 2. Configure Nix to Build for Emulated Platforms
+
+Also add this to your nix settings:
+
+```nix
+{
+  nix.settings = {
+    # Allow building for emulated architectures (via binfmt)
+    extra-platforms = [ "aarch64-linux" "armv7l-linux" ];
+  };
+}
+```
+
+### Applying the Configuration
+
+If you use the [kartoza/nix-config](https://github.com/timlinux/nix-config) repository:
+
+1. The configuration is already added to `profiles/common.nix`
+2. Rebuild your system:
+   ```bash
+   cd ~/dev/nix/nix-config
+   ./utils/rebuild.sh
+   ```
+
+If you use a different NixOS configuration:
+
+1. Add the settings above to your configuration
+2. Rebuild:
+   ```bash
+   sudo nixos-rebuild switch
+   ```
+
+### Verifying the Setup
+
+After rebuilding, verify binfmt is working:
+
+```bash
+# Check registered emulators
+ls /proc/sys/fs/binfmt_misc/
+# Should show: aarch64-linux  armv7l-linux  register  status
+
+# Verify armv7l emulation
+cat /proc/sys/fs/binfmt_misc/armv7l-linux
+# Should show: enabled
+```
+
+### Building Tuinix Images
+
+Once binfmt is enabled, you can build for any supported architecture:
+
+```bash
+# x86_64 ISO (native)
+nix build .#installer
+
+# aarch64 ISO (emulated)
+nix build .#installer-aarch64
+
+# R36S SD image (armv7l, emulated)
+nix build .#sd-r36s
+```
+
+### Build Performance Notes
+
+- **Native x86_64 builds**: Fast, uses binary cache
+- **aarch64 builds**: Good cache coverage, moderate speed via emulation
+- **armv7l builds**: Limited cache, may need to compile many packages from source
+  - First build can take several hours due to bootstrap toolchain compilation
+  - Subsequent builds are faster as packages are cached locally
+
+### Troubleshooting
+
+**Build hangs or fails immediately:**
+- Ensure you rebuilt NixOS after adding binfmt configuration
+- Check `/proc/sys/fs/binfmt_misc/armv7l-linux` exists and is enabled
+
+**"cannot execute binary file" errors:**
+- binfmt module not loaded - reboot or run: `sudo systemctl restart systemd-binfmt`
+
+**Very slow builds:**
+- This is expected for armv7l - no binary cache means compiling from source
+- Consider using a build server or distributed builds for faster results
+
+## Architecture Notes
+
+- **System**: armv7l-linux (32-bit ARM)
+- **Cross-compilation**: Building from x86_64 requires binfmt emulation
+- **Build time**: First build may take several hours due to toolchain compilation
+
+## Files Structure
+
+```
+firmware/r36s/
+├── bootloader-region.bin  # MBR + U-Boot SPL + U-Boot (36MB)
+├── boot-assets.img        # Boot logos, fonts (32MB)
+├── uboot-env.bin          # U-Boot environment (16MB)
+├── boot.img               # Android boot image with kernel (32MB)
+└── modules/               # Vendor kernel modules
+    ├── mali.ko           # GPU driver
+    ├── disp.ko           # Display driver
+    ├── lcd.ko            # LCD panel driver
+    ├── gpio-sunxi.ko     # GPIO driver
+    ├── udt_joystick.ko   # Gamepad driver
+    └── cdc_ether.ko      # USB Ethernet
+
+modules/images/
+├── r36s-sd-image.nix     # Main SD image module
+├── r36s-squashfs.nix     # NixOS squashfs builder
+└── r36s-build-image.nix  # SD image assembler
+
+hosts/r36s/
+├── default.nix           # R36S NixOS configuration
+└── hardware.nix          # Hardware-specific settings
+```

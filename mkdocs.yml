@@ -96,6 +96,7 @@ nav:
       - Overview: installation/index.md
       - Bare Metal: installation/bare-metal.md
       - Virtual Machine: installation/vm.md
+      - R36S Handheld: installation/r36s.md
   - Usage:
       - First Boot: usage/post-install.md
       - ZFS Management: usage/zfs.md

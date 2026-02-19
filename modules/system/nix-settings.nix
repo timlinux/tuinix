@@ -1,12 +1,26 @@
 # Nix configuration and settings
 { config, lib, pkgs, ... }:
 
+let
+  # Only enable binfmt emulation on x86_64 host systems
+  # This prevents circular configuration when building for ARM targets
+  isX86Host = pkgs.stdenv.hostPlatform.system == "x86_64-linux";
+in
 {
+  # Enable QEMU binfmt emulation for cross-architecture builds
+  # This allows building armv7l (R36S) and aarch64 packages on x86_64
+  # Only applies when the host is x86_64-linux
+  boot.binfmt.emulatedSystems = lib.mkIf isX86Host [ "aarch64-linux" "armv7l-linux" ];
+
   # Nix configuration
   nix = {
     settings = {
       # Enable flakes and new command
       experimental-features = [ "nix-command" "flakes" ];
+
+      # Allow building for emulated architectures (via binfmt)
+      # Only applies when the host is x86_64-linux
+      extra-platforms = lib.mkIf isX86Host [ "aarch64-linux" "armv7l-linux" ];
 
       # Binary cache configuration
       substituters =
