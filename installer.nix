@@ -32,31 +32,28 @@ let
 in {
   imports = [ (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix") ];
 
-  # Include the complete system closure for fully offline installation
-  # The offlineSystemClosure contains all packages needed for a tuinix system
-  isoImage.storeContents = lib.optionals (offlineSystemClosure != null) [
-    offlineSystemClosure
-  ] ++ (with pkgs; [
-    # Additional packages that might not be in the reference config
-    # but are useful during installation
+  # Include only essential networking packages for offline bootstrap
+  # The installer needs networking to fetch the actual system from cache
+  # We include: NetworkManager, nmtui, and iPhone tethering support
+  isoImage.storeContents = with pkgs; [
+    # NetworkManager stack for network configuration
     networkmanager
-    vim
-    git
-    curl
-    wget
-    htop
-    tree
-    # iPhone tethering
+    # iPhone USB tethering support
     libimobiledevice
     ifuse
     usbmuxd
-    # Boot and filesystem tools
+    # Boot and filesystem tools for installation
     grub2
     efibootmgr
-  ]);
+    # Basic utilities
+    vim
+    curl
+    git
+  ];
 
-  # Include build dependencies so offline rebuilds work better
-  system.includeBuildDependencies = true;
+  # Don't include build dependencies - keep ISO small
+  # Users will fetch packages from cache.nixos.org during install
+  system.includeBuildDependencies = false;
 
   # Include flake files and assets on the ISO
   isoImage.contents = [

@@ -20,6 +20,35 @@ tuinix is a NixOS-based distribution designed for users who prefer a terminal-on
 - **aarch64**: Supports UEFI-capable ARM64 devices. ZFS excluded due to compatibility.
 - **armv7l/R36S**: Uses stock vendor kernel (3.4.39) with NixOS userspace. See `docs/r36s-build-notes.md`
 
+### R36S Minimal Requirements
+
+The R36S build is stripped to the absolute minimum for a functional terminal device:
+
+| Component | Description |
+|-----------|-------------|
+| **Bootloader** | Stock U-Boot (from vendor firmware) |
+| **Kernel** | Stock vendor kernel 3.4.39 (from boot.img) |
+| **Init System** | systemd (minimal configuration) |
+| **Shell** | bash |
+| **Package Manager** | Nix with flakes support |
+| **Core Utilities** | busybox |
+| **Networking** | NetworkManager + nmtui |
+| **Tethering** | iPhone USB tethering (libimobiledevice, usbmuxd, ifuse) |
+| **Display** | Framebuffer terminal output to built-in display |
+
+**Explicitly Disabled:**
+- ZFS
+- Polkit
+- Documentation (man pages, info, NixOS docs)
+- Fonts/fontconfig
+- X11/Wayland
+- Sound (pipewire, pulseaudio)
+- Bluetooth
+- Printing
+- Firewall
+- udisks2
+- NixOS channels (flakes only)
+
 ## Installation Modes
 
 ### Online Installation

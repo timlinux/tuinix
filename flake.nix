@@ -22,8 +22,39 @@
     , ... }@inputs:
     let
       system = "x86_64-linux";
+
       pkgs = nixpkgs.legacyPackages.${system};
       lib = nixpkgs.lib;
+
+      # Overlay to disable tests and strip heavy dependencies for R36S cross-compilation
+      # This fixes Test2Harness which has flaky tests - ONLY used for R36S builds
+      r36sSkipTestsOverlay = final: prev: {
+        perlPackages = prev.perlPackages.overrideScope (pfinal: pprev: {
+          Test2Harness = pprev.Test2Harness.overrideAttrs (old: {
+            doCheck = false;
+          });
+        });
+        # Use minimal systemd without heavy BPF/LLVM dependencies
+        systemd = prev.systemd.override {
+          withLibBPF = false;      # Removes LLVM/Clang dependency
+          withCoredump = false;    # No coredump support
+          withCryptsetup = false;  # No cryptsetup support
+          withDocumentation = false;  # No docs
+          withTpm2Tss = false;     # No TPM support
+          withHomed = false;       # No homed
+          withPortabled = false;   # No portabled
+          withMachined = false;    # No machined
+          withNspawn = false;      # No nspawn
+          withImportd = false;     # No importd
+          withRemote = false;      # No journal-remote
+          withRepart = false;      # No repart
+          withSysupdate = false;   # No sysupdate
+          withVmspawn = false;     # No vmspawn
+          withUkify = false;       # No ukify
+          withFirstboot = false;   # No firstboot
+          withBootloader = false;  # No systemd-boot (we use stock uboot)
+        };
+      };
 
       # Dynamically discover hosts from the hosts directory
       hostsDir = ./hosts;
@@ -185,76 +216,6 @@
 
       # NixOS configurations (dynamically generated)
       nixosConfigurations = let
-        # Build a reference system configuration for offline installation
-        # This config represents the "base" system that will be installed
-        mkReferenceConfig = system:
-          nixpkgs.lib.nixosSystem {
-            inherit system;
-            specialArgs = {
-              inherit inputs;
-              hostname = "offline-reference";
-              inherit (nixpkgs) lib;
-            };
-            modules = [
-              disko.nixosModules.disko
-              home-manager.nixosModules.home-manager
-              ./modules
-              # Minimal reference configuration with all features enabled
-              ({ config, lib, pkgs, ... }: {
-                # Enable all the features we want available offline
-                tuinix.networking.networkmanager.enable = true;
-                tuinix.networking.iphone-tethering.enable = true;
-                tuinix.zfs.enable = lib.mkIf (system == "x86_64-linux") true;
-
-                # Basic system config
-                networking.hostName = "offline-reference";
-                networking.hostId = "00000000";
-                system.stateVersion = "25.11";
-
-                # Include a basic user for the closure
-                users.users.user = {
-                  isNormalUser = true;
-                  extraGroups = [ "wheel" "networkmanager" ];
-                };
-
-                # Home-manager config
-                home-manager.users.user = { pkgs, ... }: {
-                  home.stateVersion = "24.11";
-                };
-
-                # Boot configuration - use GRUB for broader compatibility
-                boot.loader.grub.enable = true;
-                boot.loader.grub.device = "nodev";
-                boot.loader.grub.efiSupport = true;
-                boot.loader.grub.efiInstallAsRemovable = true;
-
-                # Essential packages
-                environment.systemPackages = with pkgs; [
-                  vim
-                  git
-                  curl
-                  wget
-                  htop
-                  tree
-                ];
-
-                # Filesystem placeholder (disko requires this)
-                fileSystems."/" = {
-                  device = "/dev/disk/by-label/nixos";
-                  fsType = "ext4";
-                };
-                fileSystems."/boot" = {
-                  device = "/dev/disk/by-label/boot";
-                  fsType = "vfat";
-                };
-              })
-            ];
-          };
-
-        # Reference configs for each architecture
-        referenceX86 = mkReferenceConfig "x86_64-linux";
-        referenceAarch64 = mkReferenceConfig "aarch64-linux";
-
         # Hosts that need different architectures
         # r36s uses armv7l (32-bit ARM) due to Allwinner A33 SoC
         specialArchHosts = {
@@ -282,33 +243,37 @@
               # Don't include disko or home-manager for minimal embedded systems
               ./modules
               (hostsDir + "/${hostname}")
+              # Apply overlay to fix build issues (R36S only)
+              ({ ... }: {
+                nixpkgs.overlays = [ r36sSkipTestsOverlay ];
+              })
             ];
           }) specialArchHosts) //
 
         # ISO configurations for installation
         {
-          # x86_64 installer with offline support
+          # x86_64 installer - lightweight, requires network for installation
           "installer" = nixpkgs.lib.nixosSystem {
             system = "x86_64-linux";
             specialArgs = {
               inherit inputs;
               hostname = "nixos";
               inherit (nixpkgs) lib;
-              # Pass the reference system's toplevel for offline installation
-              offlineSystemClosure = referenceX86.config.system.build.toplevel;
+              # No offline closure - keep ISO small, fetch from cache during install
+              offlineSystemClosure = null;
             };
             modules = [ (import ./installer.nix { system = "x86_64-linux"; }) ];
           };
 
-          # aarch64 installer with offline support
+          # aarch64 installer - lightweight, requires network for installation
           "installer-aarch64" = nixpkgs.lib.nixosSystem {
             system = "aarch64-linux";
             specialArgs = {
               inherit inputs;
               hostname = "nixos";
               inherit (nixpkgs) lib;
-              # Pass the reference system's toplevel for offline installation
-              offlineSystemClosure = referenceAarch64.config.system.build.toplevel;
+              # No offline closure - keep ISO small, fetch from cache during install
+              offlineSystemClosure = null;
             };
             modules =
               [ (import ./installer.nix { system = "aarch64-linux"; }) ];

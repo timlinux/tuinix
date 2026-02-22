@@ -1,58 +1,57 @@
 # R36S Hardware Configuration
 # Allwinner A33 (sun8i) - ARMv7
+# MINIMAL configuration - stock vendor kernel/bootloader
 { config, lib, pkgs, modulesPath, ... }:
 
 {
-  # Import the base ARM configuration
-  imports = [
-    # No standard NixOS hardware module for A33
-  ];
-
-  # The stock kernel boots via Android boot.img format
-  # We don't control the kernel - it's provided by the bootloader
-  # This configuration is for the NixOS userspace only
-
-  # Disable NixOS bootloader management - stock U-Boot handles boot
-  # Use mkForce to override any defaults from other modules
+  # ============================================================
+  # BOOTLOADER - Stock U-Boot (we don't manage this)
+  # ============================================================
   boot.loader.grub.enable = lib.mkForce false;
   boot.loader.generic-extlinux-compatible.enable = lib.mkForce false;
   boot.loader.systemd-boot.enable = lib.mkForce false;
 
-  # The stock kernel will mount root and call /init
-  # We need to provide a compatible init
+  # ============================================================
+  # KERNEL - Stock vendor kernel (we don't build one)
+  # ============================================================
+  # The stock kernel (3.4.39) boots via Android boot.img format
+  # We only provide NixOS userspace, not the kernel
   boot.isContainer = false;
 
-  # Filesystem configuration
-  # Stock boot process: kernel loads, initramfs mounts /flash/SYSTEM to /sysroot
-  # For squashfs-based root, we don't specify a root filesystem here
-  # The initramfs handles this
+  # Use a standard kernel package to satisfy NixOS, but we won't actually
+  # use it - the stock vendor kernel in boot.img is what boots the device
+  # Using latest to minimize build dependencies (no kernel build needed if cached)
+  boot.kernelPackages = pkgs.linuxPackages;
+  boot.kernelModules = [ ];
+  boot.extraModulePackages = [ ];
+
+  # ============================================================
+  # FILESYSTEMS
+  # ============================================================
+  # Root is tmpfs - actual system is in squashfs overlay
   fileSystems."/" = {
     device = "none";
     fsType = "tmpfs";
     options = [ "size=64M" "mode=755" ];
   };
 
-  # Storage partition mounted by init
+  # Persistent storage partition
   fileSystems."/storage" = {
     device = "/dev/mmcblk0p8";
     fsType = "ext4";
     options = [ "noatime" "nodiratime" ];
   };
 
-  # No swap on this device
+  # No swap
   swapDevices = [ ];
 
-  # Hardware settings for Allwinner A33
+  # ============================================================
+  # HARDWARE
+  # ============================================================
+  # No firmware needed - vendor kernel has it built-in
   hardware.enableRedistributableFirmware = lib.mkForce false;
+  hardware.enableAllFirmware = lib.mkForce false;
 
-  # CPU settings - Cortex-A7 quad-core
-  nix.settings.max-jobs = 4;
-
-  # Power management (may not work with vendor kernel)
+  # Disable power management (vendor kernel doesn't support it)
   powerManagement.enable = false;
-
-  # Disable kernel module building - we use stock vendor modules
-  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
-  boot.kernelModules = [ ];
-  boot.extraModulePackages = [ ];
 }
