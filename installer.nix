@@ -22,7 +22,7 @@ let
     pname = "tuinix-installer";
     version = "1.0.0";
     src = ./cmd/installer;
-    vendorHash = null;
+    vendorHash = "sha256-PLBuZeKhfuwcln0eOFwwLag4y+tr9PQj0zvYuCtMO/c=";
     ldflags = [ "-s" "-w" ];
     env = { CGO_ENABLED = "0"; };
     preBuild = ''

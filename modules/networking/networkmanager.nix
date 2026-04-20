@@ -18,10 +18,9 @@ with lib;
     # Disable conflicting network services
     networking.useDHCP = lib.mkDefault false;
 
-    # NetworkManager tools including nmtui
+    # NetworkManager tools (terminal only - no GUI applet)
     environment.systemPackages = with pkgs; [
       networkmanager # includes nmtui, nmcli
-      networkmanagerapplet # nm-applet for tray (optional)
     ];
 
     # Add users to networkmanager group

@@ -12,7 +12,14 @@ DEFAULT_DISK_SIZE="50G"
 DEFAULT_MEMORY="8G"
 ENABLE_ENHANCED_VIRTUALIZATION="${ENABLE_ENHANCED_VIRTUALIZATION:-true}"
 DISK_FILE="$VM_NAME.qcow2"
-ISO_FILE="tuinix.v1.iso"
+# Auto-detect ISO: check nix build result first, then glob for local ISOs
+if [[ -L "result" && -d "result/iso" ]]; then
+  ISO_FILE=$(find result/iso -name "*.iso" | head -1)
+elif ls tuinix.*.iso 1>/dev/null 2>&1; then
+  ISO_FILE=$(ls -t tuinix.*.iso | head -1)
+else
+  ISO_FILE="tuinix.iso"
+fi
 CONFIG_DIR="$HOME/.config/tuinix"
 MEMORY_CONFIG="$CONFIG_DIR/memory"
 DISK_CONFIG="$CONFIG_DIR/disk_size"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Monitor Script for tuinix v0.6.0
+# Build Monitor Script for tuinix v0.7.0
 # Monitors x86_64, aarch64, and R36S builds and displays progress in a table
 
 set -e
@@ -21,7 +21,7 @@ BUILDS=(
 print_header() {
     clear
     echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║${NC}              ${GREEN}tuinix v0.6.0 Build Monitor${NC}                            ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}              ${GREEN}tuinix v0.7.0 Build Monitor${NC}                            ${BLUE}║${NC}"
     echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo -e "Last updated: $(date '+%Y-%m-%d %H:%M:%S')"

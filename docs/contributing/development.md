@@ -22,6 +22,12 @@ cd tuinix
 
 ## Common tasks
 
+### Build and test the installer (recommended)
+
+```bash
+nix run .#test-install         # Build ISO + launch QEMU in one step
+```
+
 ### Build the ISO
 
 ```bash

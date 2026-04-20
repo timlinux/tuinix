@@ -11,7 +11,8 @@ echo ""
 # Build the ISO
 nix build .#nixosConfigurations.installer.config.system.build.isoImage \
     --out-link result-x86_64 \
-    --log-format bar-with-logs
+    --log-format bar-with-logs \
+    -j auto --cores 0
 
 echo ""
 echo "=========================================="
@@ -27,8 +28,8 @@ if [[ -L result-x86_64 ]]; then
         echo "Size: $SIZE"
 
         # Copy to release name
-        cp "$ISO_PATH" tuinix.v0.6.0.x86_64.iso
-        echo "Copied to: tuinix.v0.6.0.x86_64.iso"
+        cp "$ISO_PATH" tuinix.v0.7.0.x86_64.iso
+        echo "Copied to: tuinix.v0.7.0.x86_64.iso"
     fi
 fi
 

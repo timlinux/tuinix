@@ -2,8 +2,8 @@
 # Upload x86_64 ISO to GitHub release
 set -e
 
-ISO_FILE="tuinix.v0.6.0.x86_64.iso"
-RELEASE_TAG="v0.6.0"
+ISO_FILE="tuinix.v0.7.0.x86_64.iso"
+RELEASE_TAG="v0.7.0"
 
 echo "=========================================="
 echo "Uploading x86_64 ISO to GitHub Release"

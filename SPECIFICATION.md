@@ -87,6 +87,12 @@ The R36S build is stripped to the absolute minimum for a functional terminal dev
 | SSH Server | `tuinix.security.ssh` | Disabled |
 | Firewall | `tuinix.security.firewall` | Disabled |
 
+### Display
+
+| Feature | Module | Default |
+|---------|--------|---------|
+| Console Resolution | `tuinix.display.resolution` | null (auto-detect) |
+
 ### System
 
 | Feature | Module | Default |
@@ -194,6 +200,12 @@ NIXROOT/
 
 ## ISO Build System
 
+### Quick Test
+
+```bash
+nix run .#test-install    # Build ISO and launch QEMU VM for testing
+```
+
 ### Build Command
 
 ```bash
@@ -229,7 +241,7 @@ tuinix/
 ├── flake.lock             # Locked dependencies
 ├── installer.nix          # ISO installer configuration
 ├── modules/               # NixOS modules
-│   ├── system/            # Boot, nix settings, ZFS, emulation
+│   ├── system/            # Boot, display, nix settings, ZFS
 │   ├── networking/        # NetworkManager, WiFi, iPhone tethering
 │   └── security/          # SSH, firewall
 ├── hosts/                 # Host configurations
@@ -306,6 +318,14 @@ tuinix.security.firewall = {
 };
 ```
 
+### tuinix.display
+
+```nix
+tuinix.display = {
+  resolution = "1920x1080";  # Set framebuffer console resolution (null = auto-detect)
+};
+```
+
 ### tuinix.emulation
 
 ```nix
@@ -332,8 +352,8 @@ tuinix.emulation = {
 
 | Path | Description |
 |------|-------------|
-| `/etc/tuinix` | System reference copy of flake |
-| `~/tuinix` | User's working copy (git repo) |
+| `~/tuinix` | User's flake (single source of truth, owned by user) |
+| `/etc/tuinix` | Symlink to `~/tuinix` |
 | `~/tuinix-install.log` | Installation log |
 
 ### First Boot

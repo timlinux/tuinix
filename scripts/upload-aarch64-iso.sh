@@ -2,8 +2,8 @@
 # Upload aarch64 ISO to GitHub release
 set -e
 
-ISO_FILE="tuinix.v0.6.0.aarch64.iso"
-RELEASE_TAG="v0.6.0"
+ISO_FILE="tuinix.v0.7.0.aarch64.iso"
+RELEASE_TAG="v0.7.0"
 
 echo "=========================================="
 echo "Uploading aarch64 ISO to GitHub Release"

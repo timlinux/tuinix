@@ -2,18 +2,18 @@
 # Upload R36S SD image to GitHub release
 set -e
 
-RELEASE_TAG="v0.6.0"
+RELEASE_TAG="v0.7.0"
 
 echo "=========================================="
 echo "Uploading R36S SD Image to GitHub Release"
 echo "=========================================="
 
 # Find the R36S image file
-SD_FILE=$(ls tuinix.v0.6.0.r36s.*.img* 2>/dev/null | head -1)
+SD_FILE=$(ls tuinix.v0.7.0.r36s.*.img* 2>/dev/null | head -1)
 
 if [[ -z "$SD_FILE" ]]; then
     echo "ERROR: R36S SD image not found!"
-    echo "Looking for: tuinix.v0.6.0.r36s.*.img*"
+    echo "Looking for: tuinix.v0.7.0.r36s.*.img*"
     echo "Run scripts/build-r36s-sd.sh first"
     exit 1
 fi

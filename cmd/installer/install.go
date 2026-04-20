@@ -63,14 +63,6 @@ func runInstallation(c Config) tea.Cmd {
 			logInfo("Step %d complete", step)
 		}
 
-		logInfo("Step %d: Copying flake...", step+1)
-		if err := copyFlake(c); err != nil {
-			logError("copyFlake failed: %v", err)
-			return installErrMsg{err: fmt.Errorf("copy flake: %w", err)}
-		}
-		step++
-		logInfo("Step %d complete", step)
-
 		logInfo("Step %d: Setting up user flake...", step+1)
 		if err := setupUserFlake(c); err != nil {
 			logError("setupUserFlake failed: %v", err)
@@ -310,6 +302,13 @@ func generateHardwareConfig(c Config) error {
 	var zfsBootSection string
 	var zfsScrubSection string
 	var hostIdLine string
+	var displayResLine string
+
+	if c.DisplayRes != "" {
+		displayResLine = fmt.Sprintf(`
+  # Display resolution detected at install time
+  tuinix.display.resolution = "%s";`, c.DisplayRes)
+	}
 
 	if c.StorageMode.isZFS() {
 		hostIdLine = fmt.Sprintf(`  networking.hostId = "%s";`, c.HostID)
@@ -352,9 +351,9 @@ func generateHardwareConfig(c Config) error {
     cpu.intel.updateMicrocode = lib.mkDefault true;
   };
 
-  powerManagement.cpuFreqGovernor = lib.mkDefault "powersave";%s
+  powerManagement.cpuFreqGovernor = lib.mkDefault "powersave";%s%s
 }
-`, hostIdLine, zfsBootSection, zfsScrubSection)
+`, hostIdLine, zfsBootSection, zfsScrubSection, displayResLine)
 
 	if err := os.WriteFile(filepath.Join(hostDir, "hardware.nix"), []byte(hardwareNix), 0644); err != nil {
 		return fmt.Errorf("write hardware.nix: %w", err)
@@ -399,23 +398,6 @@ func configureZFSBoot(c Config) error {
 	return nil
 }
 
-func copyFlake(c Config) error {
-	targetDir := "/mnt/etc/tuinix"
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return fmt.Errorf("create target dir: %w", err)
-	}
-
-	if _, err := runCommand("cp", "-r", c.WorkDir+"/.", targetDir+"/"); err != nil {
-		return fmt.Errorf("copy flake: %w", err)
-	}
-
-	if _, err := runCommand("chown", "-R", "root:root", targetDir); err != nil {
-		return fmt.Errorf("chown: %w", err)
-	}
-
-	return nil
-}
-
 func setupUserFlake(c Config) error {
 	userDir := fmt.Sprintf("/mnt/home/%s/tuinix", c.Username)
 	hostDir := filepath.Join(c.WorkDir, "hosts", c.Hostname)
@@ -427,25 +409,30 @@ func setupUserFlake(c Config) error {
 
 	os.RemoveAll(userDir)
 
+	// Clone the tuinix repo into the user's home directory
 	if _, err := runCommand("git", "clone", "--depth", "1", repoURL, userDir); err != nil {
 		return fmt.Errorf("git clone: %w", err)
 	}
 
+	// Copy the generated host configuration into the cloned repo
 	destHostDir := filepath.Join(userDir, "hosts", c.Hostname)
 	os.MkdirAll(filepath.Dir(destHostDir), 0755)
 	if _, err := runCommand("cp", "-r", hostDir, destHostDir); err != nil {
 		return fmt.Errorf("copy host config: %w", err)
 	}
 
+	// Copy the generated user configuration
 	userNixSrc := filepath.Join(usersDir, c.Username+".nix")
 	userNixDst := filepath.Join(userDir, "users", c.Username+".nix")
 	if _, err := runCommand("cp", userNixSrc, userNixDst); err != nil {
 		return fmt.Errorf("copy user config: %w", err)
 	}
 
+	// Configure git identity
 	runCommand("git", "-C", userDir, "config", "user.name", c.Fullname)
 	runCommand("git", "-C", userDir, "config", "user.email", c.Email)
 
+	// Commit the generated configuration
 	runCommand("git", "-C", userDir, "add", "hosts/"+c.Hostname, "users/"+c.Username+".nix")
 
 	commitMsg := fmt.Sprintf(`Add host and user configuration for %s
@@ -468,10 +455,28 @@ Keymap: %s`,
 
 	runCommand("git", "-C", userDir, "commit", "-m", commitMsg)
 
-	runCommand("chown", "-R", "1000:100", userHome)
+	// Look up the user's UID and GID from the installed system
+	uidOutput, uidErr := runCommand("nixos-enter", "--root", "/mnt", "--command",
+		fmt.Sprintf("id -u %s", c.Username))
+	gidOutput, gidErr := runCommand("nixos-enter", "--root", "/mnt", "--command",
+		fmt.Sprintf("id -g %s", c.Username))
 
+	ownership := "1000:100" // fallback
+	if uidErr == nil && gidErr == nil {
+		uid := strings.TrimSpace(uidOutput)
+		gid := strings.TrimSpace(gidOutput)
+		if uid != "" && gid != "" {
+			ownership = uid + ":" + gid
+			logInfo("setupUserFlake: detected user %s ownership as %s", c.Username, ownership)
+		}
+	}
+
+	// Set ownership of the entire home directory to the user
+	runCommand("chown", "-R", ownership, userHome)
+
+	// Make /etc/tuinix a symlink to the user's copy - single source of truth
 	runCommand("nixos-enter", "--root", "/mnt", "--command",
-		fmt.Sprintf("ln -sf /home/%s/tuinix /etc/tuinix-user", c.Username))
+		fmt.Sprintf("ln -sfn /home/%s/tuinix /etc/tuinix", c.Username))
 
 	return nil
 }

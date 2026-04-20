@@ -15,10 +15,15 @@
     fsType = "vfat";
   };
 
-  # Next line for AMD GPU, change if you have Intel or Nvidia
-  # To load the module early in the boot process so that
-  # plymouth does not switch screen sizes when the module loads
-  # (and the resolution changes)
+  # Framework 16-inch AMD display settings
+  tuinix.display.resolution = "2560x1600";
+
+  # AMD GPU panel self-refresh workaround
+  # https://community.frame.work/t/fedora-kde-becomes-suddenly-slow/58459
+  # https://gitlab.freedesktop.org/drm/amd/-/issues/3647
+  boot.kernelParams = [ "amdgpu.dcdebugmask=0x10" ];
+
+  # Load amdgpu early to avoid resolution switching during boot
   #boot.initrd.kernelModules = [ "amdgpu" ]; # or i915, nouveau, etc.
 
   # platform and cpu options

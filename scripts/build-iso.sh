@@ -193,7 +193,7 @@ build_iso_for_arch() {
   echo ""
 
   # Use gum's simple and reliable spinner
-  if ! gum spin --spinner="dot" --title="Building $arch ISO image (this may take a while)..." --show-output -- nix build ".#nixosConfigurations.${installer_name}.config.system.build.isoImage"; then
+  if ! gum spin --spinner="dot" --title="Building $arch ISO image (this may take a while)..." --show-output -- nix build ".#nixosConfigurations.${installer_name}.config.system.build.isoImage" -j auto --cores 0; then
     echo ""
     gum style --foreground="#ff0000" --border="rounded" --padding="1" "❌ ISO build failed for $arch!" "Check the output above for error details."
     return 1

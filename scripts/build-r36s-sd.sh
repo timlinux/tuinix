@@ -47,8 +47,8 @@ if [[ -L result-r36s ]]; then
 
         # Copy to release name
         BASENAME=$(basename "$SD_IMG")
-        cp "$SD_IMG" "tuinix.v0.6.0.r36s.$BASENAME"
-        echo "Copied to: tuinix.v0.6.0.r36s.$BASENAME"
+        cp "$SD_IMG" "tuinix.v0.7.0.r36s.$BASENAME"
+        echo "Copied to: tuinix.v0.7.0.r36s.$BASENAME"
     else
         echo "Result path: $RESULT_PATH"
         ls -la "$RESULT_PATH"
