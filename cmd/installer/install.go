@@ -455,6 +455,11 @@ Keymap: %s`,
 
 	runCommand("git", "-C", userDir, "commit", "-m", commitMsg)
 
+	// Make /etc/tuinix a symlink to the user's copy - single source of truth
+	// Do this BEFORE chown so nixos-enter doesn't re-create files as root
+	runCommand("nixos-enter", "--root", "/mnt", "--command",
+		fmt.Sprintf("ln -sfn /home/%s/tuinix /etc/tuinix", c.Username))
+
 	// Look up the user's UID and GID from the installed system
 	uidOutput, uidErr := runCommand("nixos-enter", "--root", "/mnt", "--command",
 		fmt.Sprintf("id -u %s", c.Username))
@@ -467,16 +472,23 @@ Keymap: %s`,
 		gid := strings.TrimSpace(gidOutput)
 		if uid != "" && gid != "" {
 			ownership = uid + ":" + gid
-			logInfo("setupUserFlake: detected user %s ownership as %s", c.Username, ownership)
 		}
 	}
+	logInfo("setupUserFlake: setting ownership of %s to %s", userHome, ownership)
 
-	// Set ownership of the entire home directory to the user
-	runCommand("chown", "-R", ownership, userHome)
+	// Set ownership of the entire home directory AND tuinix flake to the user
+	// Run chown LAST so nothing else can re-root the files
+	if _, err := runCommand("chown", "-R", ownership, userHome); err != nil {
+		logError("setupUserFlake: chown home failed: %v", err)
+	}
+	// Explicit chown on tuinix dir in case the above missed anything
+	if _, err := runCommand("chown", "-R", ownership, userDir); err != nil {
+		logError("setupUserFlake: chown tuinix dir failed: %v", err)
+	}
 
-	// Make /etc/tuinix a symlink to the user's copy - single source of truth
-	runCommand("nixos-enter", "--root", "/mnt", "--command",
-		fmt.Sprintf("ln -sfn /home/%s/tuinix /etc/tuinix", c.Username))
+	// Verify ownership was set correctly
+	verifyOutput, _ := runCommand("ls", "-la", userDir)
+	logInfo("setupUserFlake: ownership verification:\n%s", verifyOutput)
 
 	return nil
 }

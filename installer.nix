@@ -32,27 +32,13 @@ let
 in {
   imports = [ (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix") ];
 
-  # Include only essential networking packages for offline bootstrap
-  # The installer needs networking to fetch the actual system from cache
-  # We include: NetworkManager, nmtui, and iPhone tethering support
-  isoImage.storeContents = with pkgs; [
-    # NetworkManager stack for network configuration
-    networkmanager
-    # iPhone USB tethering support
-    libimobiledevice
-    ifuse
-    usbmuxd
-    # Boot and filesystem tools for installation
-    grub2
-    efibootmgr
-    # Basic utilities
-    vim
-    curl
-    git
-  ];
+  # No pre-cached store contents - online install fetches from cache.nixos.org
+  isoImage.storeContents = lib.mkForce [ ];
 
-  # Don't include build dependencies - keep ISO small
-  # Users will fetch packages from cache.nixos.org during install
+  # Better squashfs compression for smaller ISO
+  isoImage.squashfsCompression = "zstd -Xcompression-level 19";
+
+  # Don't include build dependencies
   system.includeBuildDependencies = false;
 
   # Include flake files and assets on the ISO
@@ -95,24 +81,18 @@ in {
     }
   ];
 
-  # Packages for installation environment - minimal set, no X11/GUI deps
+  # Minimal package set - only what the installer actually needs
   environment.systemPackages = with pkgs;
     [
       tuinix-installer
       git
       vim
-      nano
       curl
-      wget
       parted
       gptfdisk
       e2fsprogs
       dosfstools
-      xfsprogs
       disko
-      gum
-      catimg
-      bc
       nixos-install-tools
       mkpasswd
       util-linux
@@ -129,6 +109,9 @@ in {
 
   # Enable iPhone USB tethering support
   services.usbmuxd.enable = true;
+
+  # Disable ModemManager - not needed for terminal installer
+  systemd.services.ModemManager.enable = lib.mkForce false;
 
   # Set root password (override any defaults)
   users.users.root = {
