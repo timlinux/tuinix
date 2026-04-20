@@ -32,8 +32,10 @@ let
 in {
   imports = [ (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix") ];
 
-  # No pre-cached store contents - online install fetches from cache.nixos.org
-  isoImage.storeContents = lib.mkForce [ ];
+  # No extra pre-cached store contents beyond what the live system needs.
+  # The base module automatically includes the system closure in the squashfs.
+  # Packages needed at install time come from environment.systemPackages only.
+  isoImage.storeContents = [ ];
 
   # Better squashfs compression for smaller ISO
   isoImage.squashfsCompression = "zstd -Xcompression-level 19";
@@ -126,20 +128,19 @@ in {
   networking.useDHCP = lib.mkForce true;
   networking.firewall.enable = lib.mkForce false;
 
-  # Disable unnecessary services for minimal ISO
+  # Disable everything not needed for a terminal installer
   services.udisks2.enable = lib.mkForce false;
   security.polkit.enable = lib.mkForce false;
-
-  # Disable documentation to save space
   documentation.enable = lib.mkForce false;
   documentation.man.enable = lib.mkForce false;
   documentation.nixos.enable = lib.mkForce false;
-
-  # Disable fonts (terminal only)
   fonts.fontconfig.enable = lib.mkForce false;
-
-  # Disable X11/Wayland completely - terminal only ISO
   services.xserver.enable = lib.mkForce false;
+  hardware.bluetooth.enable = lib.mkForce false;
+  services.printing.enable = lib.mkForce false;
+  programs.nano.enable = lib.mkForce false;
+  xdg.mime.enable = lib.mkForce false;
+  xdg.icons.enable = lib.mkForce false;
 
   # Enable flakes and nix-command for disko and nixos-install
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
