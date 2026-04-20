@@ -43,29 +43,17 @@ func (m model) viewWizard() string {
 		descText,
 	)
 
-	// Apply spring animation offset to left box (slides in from left)
-	leftOffset := int(m.leftX)
-	if leftOffset < 0 {
-		leftOffset = 0
-	}
 	leftBox := borderStyle.
 		Width(leftWidth).
 		Height(contentHeight).
-		MarginLeft(leftOffset).
 		Render(leftContent)
 
 	// Right column: user inputs
 	rightContent := m.renderRightPanel(step.stepNum)
 
-	// Apply spring animation offset to right box (slides in from right)
-	rightOffset := int(m.rightX)
-	if rightOffset < 0 {
-		rightOffset = 0
-	}
 	rightBox := borderStyle.
 		Width(rightWidth).
 		Height(contentHeight).
-		MarginRight(rightOffset).
 		Render(rightContent)
 
 	// Combine columns
@@ -104,11 +92,11 @@ func (m model) viewFireTransition() string {
 
 	fireColors := []lipgloss.Color{
 		lipgloss.Color("#FFFFFF"),
-		lipgloss.Color("#FFFF00"),
-		lipgloss.Color("#FF8800"),
-		lipgloss.Color("#E95420"),
-		lipgloss.Color("#FF0000"),
-		lipgloss.Color("#880000"),
+		lipgloss.Color("#F4811F"),
+		lipgloss.Color("#D4691A"),
+		lipgloss.Color("#2C3E50"),
+		lipgloss.Color("#7F8C8D"),
+		lipgloss.Color("#34495E"),
 	}
 
 	for _, p := range m.fireParticles {
@@ -179,7 +167,7 @@ func (m model) viewSplash() string {
 	line := m.renderHorizontalLine()
 
 	subtitle := lipgloss.NewStyle().
-		Foreground(colorNixBlue).
+		Foreground(colorWhite).
 		Align(lipgloss.Center).
 		Width(m.width - 4).
 		Render("Terminal-focused NixOS")
@@ -188,6 +176,12 @@ func (m model) viewSplash() string {
 		Align(lipgloss.Center).
 		Width(m.width - 4).
 		Render("Installer v1.0")
+
+	kartoza := lipgloss.NewStyle().
+		Foreground(colorOrange).
+		Align(lipgloss.Center).
+		Width(m.width - 4).
+		Render("A Kartoza open source project  |  https://kartoza.com")
 
 	hint := grayStyle.Copy().
 		Align(lipgloss.Center).
@@ -204,6 +198,8 @@ func (m model) viewSplash() string {
 		"",
 		subtitle,
 		version,
+		"",
+		kartoza,
 		"",
 		hint,
 		"",
@@ -292,7 +288,7 @@ func (m model) viewInstalling() string {
 	if len(m.logTail) > 0 {
 		logBox := lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(colorDarkGray).
+			BorderForeground(colorDimGray).
 			Foreground(colorDimGray).
 			Width(m.width - 8).
 			Padding(0, 1)
@@ -352,12 +348,16 @@ func (m model) viewComplete() string {
 		completeInfoStyle.Render("  Password: (the one you set during install)"),
 		"",
 		completeInfoStyle.Render("Your flake is at:"),
-		completeInfoStyle.Render(fmt.Sprintf("  /home/%s/tuinix", m.config.Username)),
+		completeInfoStyle.Render(fmt.Sprintf("  /home/%s/tuinix  (owned by you, ready to edit)", m.config.Username)),
+		completeInfoStyle.Render(fmt.Sprintf("  /etc/tuinix      (symlink to your copy)")),
 		"",
 		completeInfoStyle.Render("Rebuild command:"),
-		completeInfoStyle.Render(fmt.Sprintf("  sudo nixos-rebuild switch --flake .#%s", m.config.Hostname)),
+		completeInfoStyle.Render(fmt.Sprintf("  cd ~/tuinix && sudo nixos-rebuild switch --flake .#%s", m.config.Hostname)),
 		"",
 		successStyle.Render("Git is pre-configured with your identity"),
+		"",
+		lipgloss.NewStyle().Foreground(colorOrange).Render("Made with \u2764 by Kartoza  |  https://kartoza.com"),
+		grayStyle.Render("Donate: https://github.com/sponsors/timlinux"),
 	)
 
 	reboot := promptStyle.Copy().

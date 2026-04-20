@@ -20,6 +20,35 @@ tuinix is a NixOS-based distribution designed for users who prefer a terminal-on
 - **aarch64**: Supports UEFI-capable ARM64 devices. ZFS excluded due to compatibility.
 - **armv7l/R36S**: Uses stock vendor kernel (3.4.39) with NixOS userspace. See `docs/r36s-build-notes.md`
 
+### R36S Minimal Requirements
+
+The R36S build is stripped to the absolute minimum for a functional terminal device:
+
+| Component | Description |
+|-----------|-------------|
+| **Bootloader** | Stock U-Boot (from vendor firmware) |
+| **Kernel** | Stock vendor kernel 3.4.39 (from boot.img) |
+| **Init System** | systemd (minimal configuration) |
+| **Shell** | bash |
+| **Package Manager** | Nix with flakes support |
+| **Core Utilities** | busybox |
+| **Networking** | NetworkManager + nmtui |
+| **Tethering** | iPhone USB tethering (libimobiledevice, usbmuxd, ifuse) |
+| **Display** | Framebuffer terminal output to built-in display |
+
+**Explicitly Disabled:**
+- ZFS
+- Polkit
+- Documentation (man pages, info, NixOS docs)
+- Fonts/fontconfig
+- X11/Wayland
+- Sound (pipewire, pulseaudio)
+- Bluetooth
+- Printing
+- Firewall
+- udisks2
+- NixOS channels (flakes only)
+
 ## Installation Modes
 
 ### Online Installation
@@ -57,6 +86,12 @@ tuinix is a NixOS-based distribution designed for users who prefer a terminal-on
 |---------|--------|---------|
 | SSH Server | `tuinix.security.ssh` | Disabled |
 | Firewall | `tuinix.security.firewall` | Disabled |
+
+### Display
+
+| Feature | Module | Default |
+|---------|--------|---------|
+| Console Resolution | `tuinix.display.resolution` | null (auto-detect) |
 
 ### System
 
@@ -165,6 +200,12 @@ NIXROOT/
 
 ## ISO Build System
 
+### Quick Test
+
+```bash
+nix run .#test-install    # Build ISO and launch QEMU VM for testing
+```
+
 ### Build Command
 
 ```bash
@@ -200,7 +241,7 @@ tuinix/
 ├── flake.lock             # Locked dependencies
 ├── installer.nix          # ISO installer configuration
 ├── modules/               # NixOS modules
-│   ├── system/            # Boot, nix settings, ZFS, emulation
+│   ├── system/            # Boot, display, nix settings, ZFS
 │   ├── networking/        # NetworkManager, WiFi, iPhone tethering
 │   └── security/          # SSH, firewall
 ├── hosts/                 # Host configurations
@@ -277,6 +318,14 @@ tuinix.security.firewall = {
 };
 ```
 
+### tuinix.display
+
+```nix
+tuinix.display = {
+  resolution = "1920x1080";  # Set framebuffer console resolution (null = auto-detect)
+};
+```
+
 ### tuinix.emulation
 
 ```nix
@@ -303,8 +352,8 @@ tuinix.emulation = {
 
 | Path | Description |
 |------|-------------|
-| `/etc/tuinix` | System reference copy of flake |
-| `~/tuinix` | User's working copy (git repo) |
+| `~/tuinix` | User's flake (single source of truth, owned by user) |
+| `/etc/tuinix` | Symlink to `~/tuinix` |
 | `~/tuinix-install.log` | Installation log |
 
 ### First Boot

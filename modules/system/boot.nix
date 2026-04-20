@@ -21,10 +21,10 @@ in
       timeout = 5;
     };
 
-    # Kernel configuration - use latest ZFS-compatible kernel when ZFS is enabled,
-    # otherwise use the default latest kernel for maximum performance
+    # Kernel configuration - use default LTS kernel for ZFS compatibility,
+    # otherwise use the latest kernel for maximum performance
     kernelPackages = if config.tuinix.zfs.enable then
-      config.boot.zfs.package.latestCompatibleLinuxPackages
+      pkgs.linuxPackages # Default LTS kernel, always ZFS-compatible
     else
       pkgs.linuxPackages_latest;
 
@@ -51,19 +51,8 @@ in
       "virtio_scsi"
     ];
 
-    # Settings from https://github.com/NixOS/nixos-hardware/blob/master/framework/16-inch/common/amd.nix
-    kernelParams = [
-      # Next line also to prevent plymouth resolution changes
-      "video=2560x1600"
-      # There seems to be an issue with panel self-refresh (PSR) that
-      # causes hangs for users.
-      #
-      # https://community.frame.work/t/fedora-kde-becomes-suddenly-slow/58459
-      # https://gitlab.freedesktop.org/drm/amd/-/issues/3647
-      "amdgpu.dcdebugmask=0x10"
-    ]
     # Workaround for SuspendThenHibernate: https://lore.kernel.org/linux-kernel/20231106162310.85711-1-mario.limonciello@amd.com/
-      ++ lib.optionals
+    kernelParams = lib.optionals
       (lib.versionOlder config.boot.kernelPackages.kernel.version "6.8")
       [ "rtc_cmos.use_acpi_alarm=1" ];
   };

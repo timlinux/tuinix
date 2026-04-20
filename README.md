@@ -70,9 +70,9 @@ system with Nix installed) to build, test, and iterate.
 ```bash
 git clone https://github.com/timlinux/tuinix.git
 cd tuinix
-./scripts/build-iso.sh          # Build the ISO
-./scripts/run-vm.sh iso         # Test in a VM
-nix flake check                 # Validate the flake
+nix run .#test-install           # Build ISO and test in QEMU VM
+./scripts/build-iso.sh           # Build the ISO standalone
+nix flake check                  # Validate the flake
 ```
 
 > <img src=".github/assets/LOGO.png" width="20">
@@ -202,5 +202,4 @@ MIT -- see [LICENSE](LICENSE).
 
 ---
 
-**Built by [Tim Sutton](https://github.com/timlinux) and the
-tuinix community.**
+Made with :heart: by [Kartoza](https://kartoza.com) | [Donate](https://github.com/sponsors/timlinux) | [GitHub](https://github.com/timlinux/tuinix)

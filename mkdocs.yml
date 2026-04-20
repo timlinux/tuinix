@@ -54,9 +54,9 @@ plugins:
 
 extra:
   iso:
-    version: "v0.6.0"
-    filename: "tuinix.v0.6.0.iso"
-    download_url: "https://github.com/timlinux/tuinix/releases/download/v0.6.0/tuinix.v0.6.0.iso"
+    version: "v0.7.0"
+    filename: "tuinix.v0.7.0.iso"
+    download_url: "https://github.com/timlinux/tuinix/releases/download/v0.7.0/tuinix.v0.7.0.iso"
     releases_url: "https://github.com/timlinux/tuinix/releases/latest"
   social:
     - icon: fontawesome/brands/github

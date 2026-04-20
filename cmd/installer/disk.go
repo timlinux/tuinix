@@ -336,6 +336,26 @@ func generateMultiDiskDiskoConfig(c Config) string {
 }
 
 // hashPassword generates a SHA-512 crypt hash using mkpasswd
+// detectDisplayResolution reads the current framebuffer resolution from sysfs.
+// Returns a string like "1920x1080" or empty string if detection fails.
+func detectDisplayResolution() string {
+	// Try the primary framebuffer device
+	data, err := os.ReadFile("/sys/class/graphics/fb0/virtual_size")
+	if err != nil {
+		logInfo("detectDisplayResolution: could not read fb0 virtual_size: %v", err)
+		return ""
+	}
+	// Format is "W,H\n" (e.g. "1920,1080\n")
+	parts := strings.Split(strings.TrimSpace(string(data)), ",")
+	if len(parts) != 2 {
+		logInfo("detectDisplayResolution: unexpected format: %s", string(data))
+		return ""
+	}
+	res := parts[0] + "x" + parts[1]
+	logInfo("detectDisplayResolution: detected %s", res)
+	return res
+}
+
 func hashPassword(password string) (string, error) {
 	cmd := exec.Command("mkpasswd", "-m", "sha-512", "--stdin")
 	cmd.Stdin = strings.NewReader(password)

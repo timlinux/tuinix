@@ -1,94 +1,84 @@
-# Build outputs
-result
-result-*
-.direnv/
 
-# Nix
-.nix-*
-
-# Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
 *~
-.DS_Store
-
-# OS files
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.temp
-*.log
-!PROMPT.log
-
-# Python
-__pycache__/
-*.py[cod]
 *$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Go
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-*.out
-go.work
-
-# Node.js (if used)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Secrets and sensitive files
-*.key
-*.pem
-*.p12
-*.pfx
-.env
-.env.local
-.env.*.local
-
-# Cache directories
-.cache/
-*.cache
-
-# VM and core files
-*.qcow2
-*.iso
-result/*
-core
-site/
-
 # Build artifacts
-cmd/installer/tuinix-installer
-iso-inventory.txt
-
+# Build outputs
+*.cache
+.cache
+.cache/
+# Cache directories
 # Claude settings
 .claude/settings.local.json
-
-# Firmware binaries (extracted from devices)
+cmd/installer/tuinix-installer
+cmd/installer/vendor/
+core
+*.cover
+.coverage
+coverage.xml
+.direnv/
+*.dll
+.dmypy.json
+dmypy.json
+.DS_Store
+*.dylib
+# Editor files
+.env
+env/
+ENV/
+env.bak/
+.env.*.local
+.env.local
+*.exe
+*.exe~
 firmware/
+# Firmware binaries (extracted from devices)
+# Go
+go.work
+htmlcov/
+.hypothesis/
+.idea/
+*.iso
+iso-inventory.txt
+*.key
+*.log
+.mypy_cache/
+.nix-*
+# Nix
+# Node.js (if used)
+node_modules/
+nosetests.xml
+npm-debug.log*
+# OS files
+*.out
+*.p12
+*.pem
+*.pfx
+!PROMPT.log
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Python
+.Python
+*.qcow2
+result
+result-*
+result/*
+# Secrets and sensitive files
+site/
+*.so
+*.swo
+*.swp
+*.temp
+# Temporary files
+*.test
+Thumbs.db
+*.tmp
+.tox/
+venv/
+venv.bak/
+# VM and core files
+.vscode/
+yarn-debug.log*
+yarn-error.log*
+.tuinix-test-OVMF_VARS.fd
+tuinix-test.qcow2

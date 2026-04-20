@@ -49,15 +49,18 @@ func (m model) renderStepIndicator(stepNum int) string {
 	return stepStyle.Width(m.width - 4).Render(indicator)
 }
 
-// renderFooter creates the footer with horizontal line, version, and URL
+// renderFooter creates the footer with horizontal line, version, URL, and Kartoza branding
 func (m model) renderFooter() string {
 	line := strings.Repeat("─", m.width-4)
 	version := strings.TrimSpace(versionInfo)
 	url := "https://github.com/timlinux/tuinix"
 	footerText := fmt.Sprintf("%s  |  %s", version, url)
+	kartoza := lipgloss.NewStyle().Foreground(colorOrange).Render("Made with \u2764 by Kartoza") +
+		grayStyle.Render("  |  https://kartoza.com  |  Donate: https://github.com/sponsors/timlinux")
 	return lipgloss.JoinVertical(lipgloss.Center,
 		grayStyle.Render(line),
 		footerStyle.Width(m.width-4).Render(footerText),
+		footerStyle.Width(m.width-4).Render(kartoza),
 	)
 }
 
@@ -73,7 +76,7 @@ func (m model) renderRightPanel(stepNum int) string {
 	case stateUsername, stateFullname, stateEmail, statePassword, statePasswordConfirm, stateHostname, statePassphrase, statePassphraseConfirm, stateGitHubUser, stateConfirm:
 		inputBox := lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(colorNixBlue).
+			BorderForeground(colorBlue).
 			Padding(0, 1).
 			Render(m.input.View())
 
@@ -278,7 +281,6 @@ func (m model) getInstallStepNames() []string {
 			"Generating hardware configuration",
 			"Installing NixOS",
 			"Configuring ZFS boot",
-			"Copying flake to new system",
 			"Setting up user flake",
 			"Copying install log",
 			"Finalizing ZFS pool",
@@ -289,7 +291,6 @@ func (m model) getInstallStepNames() []string {
 		"Formatting disk with XFS",
 		"Generating hardware configuration",
 		"Installing NixOS",
-		"Copying flake to new system",
 		"Setting up user flake",
 		"Copying install log",
 	}
