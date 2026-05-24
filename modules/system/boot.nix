@@ -4,8 +4,7 @@
 let
   # Check if we're on x86_64 (desktop/laptop systems)
   isX86 = pkgs.stdenv.hostPlatform.isx86_64;
-in
-{
+in {
   # Boot loader configuration - only for x86 systems
   boot = lib.mkIf isX86 {
     loader = {

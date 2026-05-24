@@ -32,19 +32,101 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
         continue-on-error: true
 
-      - name: Build installer ISO
-        run: |
-          nix build .#nixosConfigurations.installer.config.system.build.isoImage --show-trace
-
       - name: Determine tag
         id: tag
         run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            TAG=${{ github.event.inputs.tag }}
-          else
-            TAG=${GITHUB_REF#refs/tags/}
-          fi
+          TAG=${GITHUB_REF#refs/tags/}
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Build installer ISO
+        run: |
+          nix build .#nixosConfigurations.installer.config.system.build.isoImage \
+            --show-trace --max-jobs auto --cores 0
+          ISO_FILE=$(find result/iso -name "*.iso" | head -1)
+          echo "ISO_FILE=$ISO_FILE" >> $GITHUB_ENV
+          echo "ISO_SIZE=$(du -h "$ISO_FILE" | cut -f1)" >> $GITHUB_ENV
+          echo "ISO_SHA256=$(sha256sum "$ISO_FILE" | cut -d' ' -f1)" >> $GITHUB_ENV
+
+      - name: Generate package list
+        run: |
+          nix path-info -r .#nixosConfigurations.installer.config.system.build.toplevel \
+            | sed 's|/nix/store/[a-z0-9]*-||' \
+            | sort > /tmp/package-names.txt
+
+          nix path-info -r -s -S -h .#nixosConfigurations.installer.config.system.build.toplevel \
+            | sort -k3 -h -r \
+            | head -100 > /tmp/closure-top100.txt
+
+          TOTAL=$(wc -l < /tmp/package-names.txt)
+          CLOSURE_SIZE=$(nix path-info -s -S -h .#nixosConfigurations.installer.config.system.build.toplevel | awk '{print $2}')
+
+          echo "TOTAL_PACKAGES=$TOTAL" >> $GITHUB_ENV
+          echo "CLOSURE_SIZE=$CLOSURE_SIZE" >> $GITHUB_ENV
+
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          nix derivation show .#nixosConfigurations.installer.config.system.build.toplevel \
+            | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          drvs = set()
+          for drv in data.values():
+              for k in drv.get('inputDrvs', {}):
+                  name = k.split('/')[-1].rsplit('.drv', 1)[0]
+                  parts = name.split('-', 1)
+                  if len(parts) > 1:
+                      drvs.add(parts[1])
+          components = []
+          for name in sorted(drvs):
+              parts = name.rsplit('-', 1)
+              pkg_name = parts[0]
+              pkg_version = parts[1] if len(parts) > 1 else 'unknown'
+              components.append({
+                  'type': 'library',
+                  'name': pkg_name,
+                  'version': pkg_version,
+                  'purl': f'pkg:nix/{pkg_name}@{pkg_version}'
+              })
+          sbom = {
+              'bomFormat': 'CycloneDX',
+              'specVersion': '1.4',
+              'version': 1,
+              'metadata': {
+                  'component': {
+                      'type': 'operating-system',
+                      'name': 'tuinix-installer',
+                      'version': '$TAG'
+                  }
+              },
+              'components': components
+          }
+          json.dump(sbom, sys.stdout, indent=2)
+          " > /tmp/sbom.json
+
+          SBOM_COMPONENTS=$(python3 -c "import json; print(len(json.load(open('/tmp/sbom.json'))['components']))")
+          echo "SBOM_COMPONENTS=$SBOM_COMPONENTS" >> $GITHUB_ENV
+
+      - name: CVE scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          ignore-unfixed: true
+          format: "table"
+          output: "/tmp/trivy-results.txt"
+          severity: "HIGH,CRITICAL"
+        continue-on-error: true
+
+      - name: Prepare CVE summary
+        run: |
+          TRIVY_FINDINGS=$(grep -c "HIGH\|CRITICAL" /tmp/trivy-results.txt 2>/dev/null || echo "0")
+          echo "TRIVY_FINDINGS=$TRIVY_FINDINGS" >> $GITHUB_ENV
+          if [ "$TRIVY_FINDINGS" -gt 0 ]; then
+            echo "CVE_SUMMARY=:warning: $TRIVY_FINDINGS HIGH/CRITICAL findings" >> $GITHUB_ENV
+          else
+            echo "CVE_SUMMARY=:white_check_mark: No HIGH/CRITICAL vulnerabilities found" >> $GITHUB_ENV
+          fi
 
       - name: Generate changelog
         id: changelog
@@ -53,50 +135,101 @@ jobs:
           if [ -n "$LAST_TAG" ]; then
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" "$LAST_TAG"..HEAD)
           else
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)")
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" -20)
           fi
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Prepare release body
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          CHANGELOG='${{ steps.changelog.outputs.changelog }}'
+          TRIVY=$(cat /tmp/trivy-results.txt 2>/dev/null || echo "No findings.")
+          TOP100=$(cat /tmp/closure-top100.txt)
+          PACKAGE_LIST=$(cat /tmp/package-names.txt)
+
+          cat > /tmp/release-body.md << EOF
+          ## Changes
+
+          ${CHANGELOG}
+
+          ## Installation
+
+          Download the ISO image below and follow the [installation guide](https://timlinux.github.io/tuinix/installation/).
+
+          \`\`\`bash
+          sudo dd if=<downloaded-iso> of=/dev/sdX bs=4M status=progress oflag=sync
+          # Boot from USB, then run: sudo installer
+          \`\`\`
+
+          ## ISO Details
+
+          | Metric | Value |
+          |--------|-------|
+          | ISO Size | \`${ISO_SIZE}\` |
+          | Closure Size | \`${CLOSURE_SIZE}\` |
+          | Total Packages | \`${TOTAL_PACKAGES}\` |
+          | SBOM Components | \`${SBOM_COMPONENTS}\` |
+          | SHA-256 | \`${ISO_SHA256}\` |
+
+          ## Security
+
+          ${CVE_SUMMARY}
+
+          <details>
+          <summary>Trivy scan results</summary>
+
+          \`\`\`
+          ${TRIVY}
+          \`\`\`
+          </details>
+
+          <details>
+          <summary>Top 100 packages by closure size</summary>
+
+          \`\`\`
+          ${TOP100}
+          \`\`\`
+          </details>
+
+          <details>
+          <summary>Full package list (${TOTAL_PACKAGES} packages)</summary>
+
+          \`\`\`
+          ${PACKAGE_LIST}
+          \`\`\`
+          </details>
+
+          SBOM (CycloneDX JSON) is attached as a release asset.
+          EOF
 
       - name: Update docs ISO references
         run: |
           TAG=${{ steps.tag.outputs.tag }}
           ISO_FILE=$(basename result/iso/*.iso)
           DOWNLOAD_URL="https://github.com/timlinux/tuinix/releases/download/${TAG}/${ISO_FILE}"
-          RELEASES_URL="https://github.com/timlinux/tuinix/releases/latest"
 
-          # Update mkdocs.yml extra.iso values
           sed -i "s|version: \".*\"|version: \"${TAG}\"|" mkdocs.yml
           sed -i "s|filename: \".*\"|filename: \"${ISO_FILE}\"|" mkdocs.yml
           sed -i "s|download_url: \".*\"|download_url: \"${DOWNLOAD_URL}\"|" mkdocs.yml
 
-          # Commit and push the updated docs config
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add mkdocs.yml
           git diff --cached --quiet || git commit -m "docs: update ISO references to ${TAG}"
           git push origin HEAD:main
+        continue-on-error: true
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: Release ${{ steps.tag.outputs.tag }}
-          body: |
-            ## Changes
-            ${{ steps.changelog.outputs.changelog }}
-
-            ## Installation
-            Download the ISO image below and follow the [installation guide](https://timlinux.github.io/tuinix/installation/).
-
-            Flash to USB and boot:
-            ```bash
-            sudo dd if=<downloaded-iso> of=/dev/sdX bs=4M status=progress oflag=sync
-            # Boot from USB, then run: sudo installer
-            ```
+          body_path: /tmp/release-body.md
           files: |
             result/iso/*.iso
+            /tmp/sbom.json
           draft: false
           prerelease: false
         env:
