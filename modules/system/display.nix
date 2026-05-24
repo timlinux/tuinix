@@ -19,8 +19,6 @@ with lib;
   };
 
   config = mkIf (config.tuinix.display.resolution != null) {
-    boot.kernelParams = [
-      "video=${config.tuinix.display.resolution}"
-    ];
+    boot.kernelParams = [ "video=${config.tuinix.display.resolution}" ];
   };
 }

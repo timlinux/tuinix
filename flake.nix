@@ -30,29 +30,28 @@
       # This fixes Test2Harness which has flaky tests - ONLY used for R36S builds
       r36sSkipTestsOverlay = final: prev: {
         perlPackages = prev.perlPackages.overrideScope (pfinal: pprev: {
-          Test2Harness = pprev.Test2Harness.overrideAttrs (old: {
-            doCheck = false;
-          });
+          Test2Harness =
+            pprev.Test2Harness.overrideAttrs (old: { doCheck = false; });
         });
         # Use minimal systemd without heavy BPF/LLVM dependencies
         systemd = prev.systemd.override {
-          withLibBPF = false;      # Removes LLVM/Clang dependency
-          withCoredump = false;    # No coredump support
-          withCryptsetup = false;  # No cryptsetup support
-          withDocumentation = false;  # No docs
-          withTpm2Tss = false;     # No TPM support
-          withHomed = false;       # No homed
-          withPortabled = false;   # No portabled
-          withMachined = false;    # No machined
-          withNspawn = false;      # No nspawn
-          withImportd = false;     # No importd
-          withRemote = false;      # No journal-remote
-          withRepart = false;      # No repart
-          withSysupdate = false;   # No sysupdate
-          withVmspawn = false;     # No vmspawn
-          withUkify = false;       # No ukify
-          withFirstboot = false;   # No firstboot
-          withBootloader = false;  # No systemd-boot (we use stock uboot)
+          withLibBPF = false; # Removes LLVM/Clang dependency
+          withCoredump = false; # No coredump support
+          withCryptsetup = false; # No cryptsetup support
+          withDocumentation = false; # No docs
+          withTpm2Tss = false; # No TPM support
+          withHomed = false; # No homed
+          withPortabled = false; # No portabled
+          withMachined = false; # No machined
+          withNspawn = false; # No nspawn
+          withImportd = false; # No importd
+          withRemote = false; # No journal-remote
+          withRepart = false; # No repart
+          withSysupdate = false; # No sysupdate
+          withVmspawn = false; # No vmspawn
+          withUkify = false; # No ukify
+          withFirstboot = false; # No firstboot
+          withBootloader = false; # No systemd-boot (we use stock uboot)
         };
       };
 
@@ -222,27 +221,25 @@
       packages =
         # VM runners for each host (with VM-specific overrides)
         # Only generate VMs for x86_64 hosts (skip r36s which is armv7l)
-        (lib.genAttrs
-          (map (name: "vm-${name}")
-            (builtins.filter (name: name != "r36s") hostNames))
-          (vmName:
+        (lib.genAttrs (map (name: "vm-${name}")
+          (builtins.filter (name: name != "r36s") hostNames)) (vmName:
             let hostname = lib.removePrefix "vm-" vmName;
-            in (mkNixosConfig hostname [ ./profiles/vm ]).config.system.build.vm))
-        //
+            in (mkNixosConfig hostname
+              [ ./profiles/vm ]).config.system.build.vm)) //
 
         # ISO images (only for configurations that have ISO support)
         (lib.mapAttrs' (hostname: config:
           lib.nameValuePair "${hostname}" config.config.system.build.isoImage)
           (lib.filterAttrs (name: _: lib.hasPrefix "iso-" name)
-            self.nixosConfigurations))
-        //
+            self.nixosConfigurations)) //
 
         # SD images for R36S - build explicitly with: nix build .#sd-r36s
-        (let
-          r36sConfig = self.nixosConfigurations.r36s or null;
-        in if r36sConfig != null && r36sConfig.config ? system.build.sdImage
-           then { "sd-r36s" = r36sConfig.config.system.build.sdImage; }
-           else { });
+        (let r36sConfig = self.nixosConfigurations.r36s or null;
+        in if r36sConfig != null && r36sConfig.config
+        ? system.build.sdImage then {
+          "sd-r36s" = r36sConfig.config.system.build.sdImage;
+        } else
+          { });
 
     }) // {
 
@@ -252,57 +249,52 @@
       nixosConfigurations = let
         # Filter out non-x86 hosts from dynamic discovery
         x86HostNames = builtins.filter (name: name != "r36s") hostNames;
-      in
         # x86_64 host configurations
-        (lib.genAttrs x86HostNames
-          (hostname: mkNixosConfig hostname [ ])) //
+      in (lib.genAttrs x86HostNames (hostname: mkNixosConfig hostname [ ])) //
 
-        # R36S (armv7l) - build separately: nix build .#nixosConfigurations.r36s.config.system.build.sdImage
-        {
-          "r36s" = nixpkgs.lib.nixosSystem {
-            system = "armv7l-linux";
-            specialArgs = {
-              inherit inputs;
-              hostname = "r36s";
-              inherit (nixpkgs) lib;
-            };
-            modules = [
-              ./modules
-              (hostsDir + "/r36s")
-              ({ ... }: {
-                nixpkgs.overlays = [ r36sSkipTestsOverlay ];
-              })
-            ];
+      # R36S (armv7l) - build separately: nix build .#nixosConfigurations.r36s.config.system.build.sdImage
+      {
+        "r36s" = nixpkgs.lib.nixosSystem {
+          system = "armv7l-linux";
+          specialArgs = {
+            inherit inputs;
+            hostname = "r36s";
+            inherit (nixpkgs) lib;
           };
-        } //
-
-        # ISO configurations for installation
-        {
-          # x86_64 installer
-          "installer" = nixpkgs.lib.nixosSystem {
-            system = "x86_64-linux";
-            specialArgs = {
-              inherit inputs;
-              hostname = "nixos";
-              inherit (nixpkgs) lib;
-              offlineSystemClosure = null;
-            };
-            modules = [ (import ./installer.nix { system = "x86_64-linux"; }) ];
-          };
-
-          # aarch64 installer - build separately: nix build .#nixosConfigurations.installer-aarch64...
-          "installer-aarch64" = nixpkgs.lib.nixosSystem {
-            system = "aarch64-linux";
-            specialArgs = {
-              inherit inputs;
-              hostname = "nixos";
-              inherit (nixpkgs) lib;
-              offlineSystemClosure = null;
-            };
-            modules =
-              [ (import ./installer.nix { system = "aarch64-linux"; }) ];
-          };
+          modules = [
+            ./modules
+            (hostsDir + "/r36s")
+            ({ ... }: { nixpkgs.overlays = [ r36sSkipTestsOverlay ]; })
+          ];
         };
+      } //
+
+      # ISO configurations for installation
+      {
+        # x86_64 installer
+        "installer" = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = {
+            inherit inputs;
+            hostname = "nixos";
+            inherit (nixpkgs) lib;
+            offlineSystemClosure = null;
+          };
+          modules = [ (import ./installer.nix { system = "x86_64-linux"; }) ];
+        };
+
+        # aarch64 installer - build separately: nix build .#nixosConfigurations.installer-aarch64...
+        "installer-aarch64" = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";
+          specialArgs = {
+            inherit inputs;
+            hostname = "nixos";
+            inherit (nixpkgs) lib;
+            offlineSystemClosure = null;
+          };
+          modules = [ (import ./installer.nix { system = "aarch64-linux"; }) ];
+        };
+      };
 
     };
 }

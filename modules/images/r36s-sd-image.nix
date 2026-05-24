@@ -26,9 +26,8 @@ let
   firmwareExists = builtins.pathExists firmwareDir;
 
   # Build NixOS as a squashfs image
-  nixosSquashfs = pkgs.callPackage ./r36s-squashfs.nix {
-    inherit config lib pkgs;
-  };
+  nixosSquashfs =
+    pkgs.callPackage ./r36s-squashfs.nix { inherit config lib pkgs; };
 
   # Build the complete SD image (only if firmware exists)
   sdImage = if firmwareExists then
