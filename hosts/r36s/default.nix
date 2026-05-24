@@ -16,10 +16,7 @@
 { config, lib, pkgs, inputs, hostname, ... }:
 
 {
-  imports = [
-    ./hardware.nix
-    ../../modules/images/r36s-sd-image.nix
-  ];
+  imports = [ ./hardware.nix ../../modules/images/r36s-sd-image.nix ];
 
   # Enable R36S SD image building
   tuinix.r36s.enable = true;
@@ -34,7 +31,7 @@
   networking.networkmanager = {
     enable = true;
     # Disable plugins that pull in heavy dependencies
-    plugins = lib.mkForce [];
+    plugins = lib.mkForce [ ];
   };
 
   # iPhone USB tethering (minimal)
@@ -44,7 +41,7 @@
   environment.systemPackages = lib.mkForce (with pkgs; [
     # Required
     busybox
-    networkmanager  # nmtui, nmcli
+    networkmanager # nmtui, nmcli
     libimobiledevice
     ifuse
 
@@ -56,7 +53,7 @@
   ]);
 
   # Disable default packages we don't need
-  environment.defaultPackages = lib.mkForce [];
+  environment.defaultPackages = lib.mkForce [ ];
 
   # Don't install NixOS tools on target (this is an appliance)
   system.disableInstallerTools = true;
