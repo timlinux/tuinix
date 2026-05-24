@@ -19,9 +19,10 @@ with lib;
     networking.useDHCP = lib.mkDefault false;
 
     # NetworkManager tools (terminal only - no GUI applet)
-    environment.systemPackages = with pkgs; [
-      networkmanager # includes nmtui, nmcli
-    ];
+    environment.systemPackages = with pkgs;
+      [
+        networkmanager # includes nmtui, nmcli
+      ];
 
     # Add users to networkmanager group
     users.groups.networkmanager = { };
