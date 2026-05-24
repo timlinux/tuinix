@@ -4,8 +4,7 @@
 # - {{ROOT_PARTITION}} - Root partition device (e.g., /dev/sda3)
 # - {{BOOT_PARTITION}} - Boot/ESP partition device (e.g., /dev/sda1)
 
-{ lib, ... }:
-{
+{ lib, ... }: {
   fileSystems = {
     "/" = {
       device = "{{ROOT_PARTITION}}";

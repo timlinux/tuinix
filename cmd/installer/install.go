@@ -13,7 +13,7 @@ import (
 func runInstallation(c Config) tea.Cmd {
 	return func() tea.Msg {
 		logInfo("=== Starting installation ===")
-		logInfo("Config: Username=%s, Hostname=%s, Disk=%s, StorageMode=%s, EnableSSH=%v", c.Username, c.Hostname, c.Disk, c.StorageMode, c.EnableSSH)
+		logInfo("Config: Username=%s, Hostname=%s, Disk=%s, StorageMode=%s, TUI=%v, Pentest=%v, Games=%v, EnableSSH=%v", c.Username, c.Hostname, c.Disk, c.StorageMode, c.EnableTUI, c.EnablePentest, c.EnableGames, c.EnableSSH)
 		if c.StorageMode.isMultiDisk() {
 			logInfo("Config: Disks=%v", c.Disks)
 		}
@@ -259,6 +259,11 @@ func generateHostConfig(c Config) error {
     tree
   ];
 
+  # Package sets selected during installation
+  tuinix.packages.tui = %v;
+  tuinix.packages.pentest = %v;
+  tuinix.packages.games = %v;
+
 %s
 %s%s
   boot.consoleLogLevel = 3;
@@ -273,7 +278,7 @@ func generateHostConfig(c Config) error {
   services.xserver.xkb.layout = "%s";
   console.keyMap = "%s";
 }
-`, c.Username, zfsConfig, sshConfig, bootloaderConfig, c.Locale, c.Keymap, c.ConsoleKeyMap)
+`, c.Username, c.EnableTUI, c.EnablePentest, c.EnableGames, zfsConfig, sshConfig, bootloaderConfig, c.Locale, c.Keymap, c.ConsoleKeyMap)
 
 	if err := os.WriteFile(filepath.Join(hostDir, "default.nix"), []byte(defaultNix), 0644); err != nil {
 		return fmt.Errorf("write default.nix: %w", err)

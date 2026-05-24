@@ -39,6 +39,7 @@ func initialModel() model {
 			{Label: "fr", XKBLayout: "fr", ConsoleMap: "fr-latin1"},
 			{Label: "es", XKBLayout: "es", ConsoleMap: "es"},
 		},
+		pkgSelected: make([]bool, len(packageOptions)),
 		config: Config{
 			ZFSPoolName: "NIXROOT",
 			SpaceBoot:   "5G",
@@ -102,7 +103,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Only allow q to quit on non-input screens (splash, disk selection, locale, keymap, ssh, summary, complete, error)
 			// Text input states must pass q through to the input field
 			switch m.state {
-			case stateSplash, stateNetworkCheck, stateDisk, stateDiskMulti, statePartitionBoot, statePartitionRoot, stateLocale, stateKeymap, stateSSH, stateSummary, stateStorageMode, stateComplete, stateError:
+			case stateSplash, stateNetworkCheck, stateDisk, stateDiskMulti, statePartitionBoot, statePartitionRoot, stateLocale, stateKeymap, statePackageSet, stateSSH, stateSummary, stateStorageMode, stateComplete, stateError:
 				return m, tea.Quit
 			}
 		case "enter":
@@ -110,12 +111,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.handleEnter()
 			}
 		case " ":
-			// Space toggles disk selection in multi-disk mode
 			if m.state == stateDiskMulti && m.selectedIdx < len(m.disks) {
 				m.diskSelected[m.selectedIdx] = !m.diskSelected[m.selectedIdx]
+			} else if m.state == statePackageSet && m.selectedIdx < len(m.pkgSelected) {
+				m.pkgSelected[m.selectedIdx] = !m.pkgSelected[m.selectedIdx]
 			}
 		case "up", "k":
-			if m.state == stateDisk || m.state == stateDiskMulti || m.state == statePartitionBoot || m.state == statePartitionRoot || m.state == stateLocale || m.state == stateKeymap || m.state == stateSSH || m.state == stateStorageMode {
+			if m.state == stateDisk || m.state == stateDiskMulti || m.state == statePartitionBoot || m.state == statePartitionRoot || m.state == stateLocale || m.state == stateKeymap || m.state == statePackageSet || m.state == stateSSH || m.state == stateStorageMode {
 				if m.selectedIdx > 0 {
 					m.selectedIdx--
 				}
@@ -132,6 +134,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else if m.state == stateLocale && m.selectedIdx < len(m.locales)-1 {
 				m.selectedIdx++
 			} else if m.state == stateKeymap && m.selectedIdx < len(m.keymaps)-1 {
+				m.selectedIdx++
+			} else if m.state == statePackageSet && m.selectedIdx < len(packageOptions)-1 {
 				m.selectedIdx++
 			} else if m.state == stateSSH && m.selectedIdx < 1 {
 				m.selectedIdx++
@@ -505,6 +509,13 @@ func (m model) handleEnter() (tea.Model, tea.Cmd) {
 		m.config.Keymap = km.XKBLayout
 		m.config.ConsoleKeyMap = km.ConsoleMap
 		calculateSpaceAllocation(&m.config)
+		m.state = statePackageSet
+		m.selectedIdx = 0
+
+	case statePackageSet:
+		m.config.EnableTUI = m.pkgSelected[0]
+		m.config.EnablePentest = m.pkgSelected[1]
+		m.config.EnableGames = m.pkgSelected[2]
 		m.state = stateSSH
 		m.selectedIdx = 0
 

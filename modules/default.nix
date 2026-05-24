@@ -2,5 +2,5 @@
 { lib, ... }:
 
 {
-  imports = [ ./system ./security ./networking ];
+  imports = [ ./system ./security ./networking ./locale ../software ];
 }
