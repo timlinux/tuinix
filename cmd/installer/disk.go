@@ -41,6 +41,44 @@ func getAvailableDisks() []diskInfo {
 	return disks
 }
 
+func getAvailablePartitions(disk string) []partitionInfo {
+	var partitions []partitionInfo
+
+	// Use -p for full device paths and -l for flat list (no tree characters)
+	cmd := exec.Command("lsblk", "-n", "-l", "-p", "-o", "NAME,SIZE,TYPE,FSTYPE,PARTLABEL", disk)
+	output, err := cmd.Output()
+	if err != nil {
+		return []partitionInfo{{Path: disk + "1", Size: "500M", FSType: "vfat", Label: "EFI System"}}
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && fields[2] == "part" {
+			fsType := ""
+			if len(fields) >= 4 {
+				fsType = fields[3]
+			}
+			label := ""
+			if len(fields) >= 5 {
+				label = strings.Join(fields[4:], " ")
+			}
+			partitions = append(partitions, partitionInfo{
+				Path:   fields[0],
+				Size:   fields[1],
+				FSType: fsType,
+				Label:  label,
+			})
+		}
+	}
+
+	if len(partitions) == 0 {
+		partitions = []partitionInfo{{Path: disk + "1", Size: "unknown", FSType: "", Label: "No partitions found"}}
+	}
+
+	return partitions
+}
+
 func calculateSpaceAllocation(c *Config) {
 	// For multi-disk ZFS, calculate total pool size across all disks
 	// (excluding the boot partition on the first disk)
@@ -71,6 +109,15 @@ func calculateSpaceAllocation(c *Config) {
 
 	bootGB := int64(5)
 	c.SpaceBoot = fmt.Sprintf("%dG", bootGB)
+
+	if c.StorageMode.usesPartitions() {
+		// Partition mode: using existing partitions, no space allocation needed
+		c.SpaceBoot = "(existing)"
+		c.SpaceNix = ""
+		c.SpaceAtuin = ""
+		c.SpaceHome = ""
+		return
+	}
 
 	if !c.StorageMode.isZFS() {
 		// XFS: just boot + root, no separate partitions
@@ -114,8 +161,42 @@ func getDiskSizeGB(disk string) int64 {
 	return sizeGB
 }
 
+func formatPartitions(c Config) error {
+	logInfo("formatPartitions: starting partition mode")
+	logInfo("formatPartitions: root=%s, boot=%s", c.RootPartition, c.BootPartition)
+
+	// Format root partition with XFS
+	logInfo("formatPartitions: formatting %s with XFS", c.RootPartition)
+	if _, err := runCommand("mkfs.xfs", "-f", c.RootPartition); err != nil {
+		return fmt.Errorf("mkfs.xfs %s: %w", c.RootPartition, err)
+	}
+
+	// Mount root partition
+	logInfo("formatPartitions: mounting %s at /mnt", c.RootPartition)
+	os.MkdirAll("/mnt", 0755)
+	if _, err := runCommand("mount", c.RootPartition, "/mnt"); err != nil {
+		return fmt.Errorf("mount %s: %w", c.RootPartition, err)
+	}
+
+	// Mount boot partition
+	logInfo("formatPartitions: mounting %s at /mnt/boot", c.BootPartition)
+	os.MkdirAll("/mnt/boot", 0755)
+	if _, err := runCommand("mount", c.BootPartition, "/mnt/boot"); err != nil {
+		return fmt.Errorf("mount %s: %w", c.BootPartition, err)
+	}
+
+	logInfo("formatPartitions: completed successfully")
+	return nil
+}
+
 func formatDisk(c Config) error {
 	logInfo("formatDisk: starting")
+
+	// Partition mode: skip disko, format and mount manually
+	if c.StorageMode.usesPartitions() {
+		return formatPartitions(c)
+	}
+
 	hostDir := filepath.Join(c.WorkDir, "hosts", c.Hostname)
 	diskoConfig := filepath.Join(hostDir, "disks.nix")
 	logInfo("formatDisk: diskoConfig = %s", diskoConfig)

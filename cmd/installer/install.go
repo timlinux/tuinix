@@ -13,7 +13,7 @@ import (
 func runInstallation(c Config) tea.Cmd {
 	return func() tea.Msg {
 		logInfo("=== Starting installation ===")
-		logInfo("Config: Username=%s, Hostname=%s, Disk=%s, StorageMode=%s, EnableSSH=%v", c.Username, c.Hostname, c.Disk, c.StorageMode, c.EnableSSH)
+		logInfo("Config: Username=%s, Hostname=%s, Disk=%s, StorageMode=%s, TUI=%v, Pentest=%v, Games=%v, EnableSSH=%v", c.Username, c.Hostname, c.Disk, c.StorageMode, c.EnableTUI, c.EnablePentest, c.EnableGames, c.EnableSSH)
 		if c.StorageMode.isMultiDisk() {
 			logInfo("Config: Disks=%v", c.Disks)
 		}
@@ -62,6 +62,24 @@ func runInstallation(c Config) tea.Cmd {
 			step++
 			logInfo("Step %d complete", step)
 		}
+
+		if c.StorageMode.usesPartitions() {
+			logInfo("Step %d: Reinstalling GRUB bootloader...", step+1)
+			if err := configurePartitionBoot(c); err != nil {
+				logError("configurePartitionBoot failed: %v", err)
+				return installErrMsg{err: fmt.Errorf("configure partition boot: %w", err)}
+			}
+			step++
+			logInfo("Step %d complete", step)
+		}
+
+		logInfo("Step %d: Copying flake...", step+1)
+		if err := copyFlake(c); err != nil {
+			logError("copyFlake failed: %v", err)
+			return installErrMsg{err: fmt.Errorf("copy flake: %w", err)}
+		}
+		step++
+		logInfo("Step %d complete", step)
 
 		logInfo("Step %d: Setting up user flake...", step+1)
 		if err := setupUserFlake(c); err != nil {
@@ -199,6 +217,17 @@ func generateHostConfig(c Config) error {
 		zfsConfig = `  tuinix.zfs.enable = false;`
 	}
 
+	// For dual-boot partition mode, override bootloader to avoid GRUB module conflicts
+	// on shared ESP. Install to NixOS-specific EFI directory instead of fallback path.
+	var bootloaderConfig string
+	if c.StorageMode.usesPartitions() {
+		bootloaderConfig = `
+
+  # Dual-boot: install GRUB to its own EFI directory to avoid module conflicts
+  boot.loader.grub.efiInstallAsRemovable = lib.mkForce false;
+  boot.loader.efi.canTouchEfiVariables = true;`
+	}
+
 	var sshConfig string
 	if c.EnableSSH {
 		sshConfig = `
@@ -230,8 +259,13 @@ func generateHostConfig(c Config) error {
     tree
   ];
 
+  # Package sets selected during installation
+  tuinix.packages.tui = %v;
+  tuinix.packages.pentest = %v;
+  tuinix.packages.games = %v;
+
 %s
-%s
+%s%s
   boot.consoleLogLevel = 3;
 
   # Enable NetworkManager for network management (provides nmtui)
@@ -244,7 +278,7 @@ func generateHostConfig(c Config) error {
   services.xserver.xkb.layout = "%s";
   console.keyMap = "%s";
 }
-`, c.Username, zfsConfig, sshConfig, c.Locale, c.Keymap, c.ConsoleKeyMap)
+`, c.Username, c.EnableTUI, c.EnablePentest, c.EnableGames, zfsConfig, sshConfig, bootloaderConfig, c.Locale, c.Keymap, c.ConsoleKeyMap)
 
 	if err := os.WriteFile(filepath.Join(hostDir, "default.nix"), []byte(defaultNix), 0644); err != nil {
 		return fmt.Errorf("write default.nix: %w", err)
@@ -262,6 +296,16 @@ func generateHostConfig(c Config) error {
 		disksContent = string(templateBytes)
 		disksContent = strings.ReplaceAll(disksContent, "{{DISK_DEVICE}}", c.Disk)
 		disksContent = strings.ReplaceAll(disksContent, "{{SPACE_BOOT}}", c.SpaceBoot)
+
+	case storageXFSPartition:
+		templateFile := filepath.Join(workDir, "templates", "disko-xfs-partition.nix")
+		templateBytes, err := os.ReadFile(templateFile)
+		if err != nil {
+			return fmt.Errorf("read xfs partition template: %w", err)
+		}
+		disksContent = string(templateBytes)
+		disksContent = strings.ReplaceAll(disksContent, "{{ROOT_PARTITION}}", c.RootPartition)
+		disksContent = strings.ReplaceAll(disksContent, "{{BOOT_PARTITION}}", c.BootPartition)
 
 	case storageZFSEncryptedSingle:
 		templateFile := filepath.Join(workDir, "templates", "disko-template.nix")
@@ -393,6 +437,39 @@ func configureZFSBoot(c Config) error {
 
 	if strings.TrimSpace(output) != bootfsPath {
 		return fmt.Errorf("bootfs not set correctly, got: %s", output)
+	}
+
+	return nil
+}
+
+func configurePartitionBoot(c Config) error {
+	// Remove conflicting GRUB modules from shared ESP left by another OS (e.g. CachyOS).
+	// NixOS GRUB with os-prober will regenerate the config detecting all OSes.
+	logInfo("configurePartitionBoot: cleaning old GRUB modules from shared ESP")
+	runCommand("rm", "-rf", "/mnt/boot/grub")
+
+	// Reinstall GRUB from within the installed system to ensure module consistency
+	logInfo("configurePartitionBoot: reinstalling GRUB via nixos-enter")
+	if _, err := runCommand("nixos-enter", "--root", "/mnt", "--command",
+		"/run/current-system/bin/switch-to-configuration boot"); err != nil {
+		return fmt.Errorf("reinstall bootloader: %w", err)
+	}
+
+	return nil
+}
+
+func copyFlake(c Config) error {
+	targetDir := "/mnt/etc/tuinix"
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("create target dir: %w", err)
+	}
+
+	if _, err := runCommand("cp", "-r", c.WorkDir+"/.", targetDir+"/"); err != nil {
+		return fmt.Errorf("copy flake: %w", err)
+	}
+
+	if _, err := runCommand("chown", "-R", "root:root", targetDir); err != nil {
+		return fmt.Errorf("chown: %w", err)
 	}
 
 	return nil

@@ -127,6 +127,59 @@ func (m model) renderRightPanel(stepNum int) string {
 		hint := grayStyle.Render("\nUp/Down to select | Enter to confirm")
 		content = warning + "\n\n" + diskList.String() + hint
 
+	case statePartitionBoot:
+		var partList strings.Builder
+		for i, part := range m.partitions {
+			cursor := "  "
+			style := lipgloss.NewStyle().Foreground(colorOffWhite)
+			if i == m.selectedIdx {
+				cursor = "> "
+				style = style.Foreground(colorOrange).Bold(true)
+			}
+			line := fmt.Sprintf("%s%-12s %8s  %s", cursor, part.Path, part.Size, part.FSType)
+			partList.WriteString(style.Render(line))
+			partList.WriteString("\n")
+			if part.Label != "" {
+				partList.WriteString(grayStyle.Render("   " + part.Label))
+				partList.WriteString("\n")
+			}
+		}
+
+		note := grayStyle.Render("Select the EFI/boot partition (typically vfat)")
+		hint := grayStyle.Render("\nUp/Down to select | Enter to confirm")
+		content = note + "\n\n" + partList.String() + hint
+
+	case statePartitionRoot:
+		var partList strings.Builder
+		for i, part := range m.partitions {
+			cursor := "  "
+			style := lipgloss.NewStyle().Foreground(colorOffWhite)
+			if i == m.selectedIdx {
+				cursor = "> "
+				style = style.Foreground(colorOrange).Bold(true)
+			}
+			// Indicate which partition is already selected as boot
+			bootMarker := ""
+			if part.Path == m.config.BootPartition {
+				bootMarker = " [boot]"
+			}
+			line := fmt.Sprintf("%s%-12s %8s  %s%s", cursor, part.Path, part.Size, part.FSType, bootMarker)
+			partList.WriteString(style.Render(line))
+			partList.WriteString("\n")
+			if part.Label != "" {
+				partList.WriteString(grayStyle.Render("   " + part.Label))
+				partList.WriteString("\n")
+			}
+		}
+
+		warning := errorStyle.Render("! This partition will be formatted with XFS!")
+		var errText string
+		if m.err != nil {
+			errText = "\n" + errorStyle.Render("! "+m.err.Error())
+		}
+		hint := grayStyle.Render("\nUp/Down to select | Enter to confirm")
+		content = warning + "\n\n" + partList.String() + errText + hint
+
 	case stateDiskMulti:
 		var diskList strings.Builder
 		selectedCount := 0
@@ -165,6 +218,28 @@ func (m model) renderRightPanel(stepNum int) string {
 		}
 		hint := grayStyle.Render("\nSpace to toggle | Up/Down to move | Enter to confirm")
 		content = warning + "\n" + statusStyle.Render(status) + "\n\n" + diskList.String() + errText + hint
+
+	case statePackageSet:
+		baseStyle := lipgloss.NewStyle().Foreground(colorGreen)
+		content = baseStyle.Render("[x] Minimal (always installed)") + "\n"
+		content += grayStyle.Render("    vim, git, curl, htop, tmux, wget, tree") + "\n\n"
+
+		for i, opt := range packageOptions {
+			cursor := "  "
+			check := "[ ]"
+			style := lipgloss.NewStyle().Foreground(colorOffWhite)
+			if i == m.selectedIdx {
+				cursor = "> "
+				style = style.Foreground(colorOrange).Bold(true)
+			}
+			if m.pkgSelected[i] {
+				check = "[x]"
+			}
+			content += style.Render(cursor+check+" "+opt.Label) + "\n"
+			content += grayStyle.Render("    "+opt.Desc) + "\n\n"
+		}
+		hint := grayStyle.Render("[Space] Toggle | [Up/Down] Move | [Enter] Next")
+		content += hint
 
 	case stateSSH:
 		sshOptions := []struct {
@@ -225,7 +300,11 @@ func (m model) renderRightPanel(stepNum int) string {
 
 		// Build disk info section
 		var diskInfo string
-		if m.config.StorageMode.isMultiDisk() {
+		if m.config.StorageMode.usesPartitions() {
+			diskInfo = infoStyle.Render(fmt.Sprintf("  Disk:      %s", m.config.Disk)) + "\n" +
+				infoStyle.Render(fmt.Sprintf("  Boot part: %s", m.config.BootPartition)) + "\n" +
+				infoStyle.Render(fmt.Sprintf("  Root part: %s", m.config.RootPartition))
+		} else if m.config.StorageMode.isMultiDisk() {
 			diskInfo = infoStyle.Render(fmt.Sprintf("  Disks:     %s", strings.Join(m.config.Disks, ", ")))
 		} else {
 			diskInfo = infoStyle.Render(fmt.Sprintf("  Disk:      %s", m.config.Disk))
@@ -233,7 +312,11 @@ func (m model) renderRightPanel(stepNum int) string {
 
 		// Build storage allocation section
 		var allocSection string
-		if m.config.StorageMode.isZFS() {
+		if m.config.StorageMode.usesPartitions() {
+			allocSection = promptStyle.Render("Partition Layout") + "\n" +
+				infoStyle.Render(fmt.Sprintf("  /boot:      %s (existing)", m.config.BootPartition)) + "\n" +
+				infoStyle.Render(fmt.Sprintf("  /:          %s (XFS)", m.config.RootPartition))
+		} else if m.config.StorageMode.isZFS() {
 			allocSection = promptStyle.Render("Disk Allocation") + "\n" +
 				infoStyle.Render(fmt.Sprintf("  /boot:      %s", m.config.SpaceBoot)) + "\n" +
 				infoStyle.Render(fmt.Sprintf("  /nix:       %s", m.config.SpaceNix)) + "\n" +
@@ -264,6 +347,7 @@ func (m model) renderRightPanel(stepNum int) string {
 			infoStyle.Render(fmt.Sprintf("  Host ID:   %s", m.config.HostID)) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Locale:    %s", m.config.Locale)) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Keyboard:  %s", m.config.Keymap)) + "\n" +
+			infoStyle.Render(fmt.Sprintf("  Packages:  %s", formatPackageSets(m.config))) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  SSH:       %s", sshStatus)) +
 			sshExtra + "\n\n" +
 			allocSection + "\n\n" +
@@ -271,6 +355,20 @@ func (m model) renderRightPanel(stepNum int) string {
 	}
 
 	return content
+}
+
+func formatPackageSets(c Config) string {
+	sets := []string{"Minimal"}
+	if c.EnableTUI {
+		sets = append(sets, "TUI")
+	}
+	if c.EnablePentest {
+		sets = append(sets, "Pentest")
+	}
+	if c.EnableGames {
+		sets = append(sets, "Games")
+	}
+	return strings.Join(sets, " + ")
 }
 
 func (m model) getInstallStepNames() []string {
@@ -284,6 +382,18 @@ func (m model) getInstallStepNames() []string {
 			"Setting up user flake",
 			"Copying install log",
 			"Finalizing ZFS pool",
+		}
+	}
+	if m.config.StorageMode.usesPartitions() {
+		return []string{
+			"Generating host configuration",
+			"Formatting root partition with XFS",
+			"Generating hardware configuration",
+			"Installing NixOS",
+			"Reinstalling GRUB bootloader",
+			"Copying flake to new system",
+			"Setting up user flake",
+			"Copying install log",
 		}
 	}
 	return []string{
