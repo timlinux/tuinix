@@ -206,8 +206,12 @@ jobs:
             const closurePackages = fs.readFileSync('/tmp/closure-packages.txt', 'utf8')
               .split('\n').slice(0, 50).join('\n');
 
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
             const body = [
               '## ISO Build Report',
+              '',
+              `**[Download installer ISO](${runUrl}#artifacts)** (available for 7 days)`,
               '',
               '| Metric | Value |',
               '|--------|-------|',
@@ -241,7 +245,7 @@ jobs:
               '```',
               '</details>',
               '',
-              'SBOM artifact (CycloneDX JSON) is attached to the workflow run.',
+              `[SBOM (CycloneDX JSON)](${runUrl}#artifacts) is attached to the workflow run.`,
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
