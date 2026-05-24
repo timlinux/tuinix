@@ -8,7 +8,10 @@ with lib;
   options.tuinix.packages = {
     tui = mkEnableOption
       "TUI productivity suite (terminal apps for messaging, browsing, productivity)";
-    gui = mkEnableOption "Minimal GUI (Sway, Brave browser, PipeWire audio)";
+    pentest = mkEnableOption
+      "Pentest tools (aircrack-ng, nmap, metasploit, wireshark, hashcat)";
+    games = mkEnableOption
+      "Terminal games (roguelikes, puzzles, classics, text adventures)";
   };
 
   config = {

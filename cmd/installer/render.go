@@ -166,6 +166,28 @@ func (m model) renderRightPanel(stepNum int) string {
 		hint := grayStyle.Render("\nSpace to toggle | Up/Down to move | Enter to confirm")
 		content = warning + "\n" + statusStyle.Render(status) + "\n\n" + diskList.String() + errText + hint
 
+	case statePackageSet:
+		baseStyle := lipgloss.NewStyle().Foreground(colorGreen)
+		content = baseStyle.Render("[x] Minimal (always installed)") + "\n"
+		content += grayStyle.Render("    vim, git, curl, htop, tmux, wget, tree") + "\n\n"
+
+		for i, opt := range packageOptions {
+			cursor := "  "
+			check := "[ ]"
+			style := lipgloss.NewStyle().Foreground(colorOffWhite)
+			if i == m.selectedIdx {
+				cursor = "> "
+				style = style.Foreground(colorOrange).Bold(true)
+			}
+			if m.pkgSelected[i] {
+				check = "[x]"
+			}
+			content += style.Render(cursor+check+" "+opt.Label) + "\n"
+			content += grayStyle.Render("    "+opt.Desc) + "\n\n"
+		}
+		hint := grayStyle.Render("[Space] Toggle | [Up/Down] Move | [Enter] Next")
+		content += hint
+
 	case stateSSH:
 		sshOptions := []struct {
 			label string
@@ -264,6 +286,7 @@ func (m model) renderRightPanel(stepNum int) string {
 			infoStyle.Render(fmt.Sprintf("  Host ID:   %s", m.config.HostID)) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Locale:    %s", m.config.Locale)) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  Keyboard:  %s", m.config.Keymap)) + "\n" +
+			infoStyle.Render(fmt.Sprintf("  Packages:  %s", formatPackageSets(m.config))) + "\n" +
 			infoStyle.Render(fmt.Sprintf("  SSH:       %s", sshStatus)) +
 			sshExtra + "\n\n" +
 			allocSection + "\n\n" +
@@ -271,6 +294,20 @@ func (m model) renderRightPanel(stepNum int) string {
 	}
 
 	return content
+}
+
+func formatPackageSets(c Config) string {
+	sets := []string{"Minimal"}
+	if c.EnableTUI {
+		sets = append(sets, "TUI")
+	}
+	if c.EnablePentest {
+		sets = append(sets, "Pentest")
+	}
+	if c.EnableGames {
+		sets = append(sets, "Games")
+	}
+	return strings.Join(sets, " + ")
 }
 
 func (m model) getInstallStepNames() []string {

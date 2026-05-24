@@ -82,6 +82,7 @@ const (
 	statePassphraseConfirm
 	stateLocale
 	stateKeymap
+	statePackageSet
 	stateSSH
 	stateGitHubUser
 	stateSummary
@@ -300,6 +301,33 @@ Common layouts:
 • fr - French (AZERTY)`,
 		stepNum: 12,
 	},
+	statePackageSet: {
+		title: "Package Sets",
+		description: `Select additional package sets to install.
+
+The base system (vim, git, curl, htop,
+tmux, wget, tree) is always included.
+
+Use Space to toggle each option:
+
+TUI Productivity Suite:
+  Terminal apps for daily work. neovim,
+  helix, ranger, lazygit, btop, weechat,
+  aerc, w3m, starship, atuin, zellij.
+
+Pentest Tools:
+  Security auditing and penetration
+  testing. aircrack-ng, nmap, metasploit,
+  wireshark, hashcat, sqlmap.
+
+Terminal Games:
+  Best-of-breed terminal games. Roguelikes,
+  puzzles, arcade, text adventures.
+
+You can always add/remove packages later
+via your NixOS configuration.`,
+		stepNum: 13,
+	},
 	stateSSH: {
 		title: "SSH Server",
 		description: `Choose whether to enable the SSH server
@@ -321,7 +349,7 @@ so we can fetch your public SSH keys.
 Recommended for servers and headless
 machines. You can change this later in
 your NixOS configuration.`,
-		stepNum: 13,
+		stepNum: 14,
 	},
 	stateGitHubUser: {
 		title: "GitHub Username",
@@ -339,7 +367,7 @@ GitHub SSH keys.
 Password authentication will be disabled,
 so key-based access is the only way to
 log in remotely.`,
-		stepNum: 14,
+		stepNum: 15,
 	},
 	stateSummary: {
 		title: "Review Configuration",
@@ -355,7 +383,7 @@ After confirmation, the installer will:
 This process takes 10-30 minutes
 depending on your hardware and
 internet connection speed.`,
-		stepNum: 15,
+		stepNum: 16,
 	},
 	stateConfirm: {
 		title: "Final Confirmation",
@@ -368,11 +396,23 @@ This action cannot be undone.
 
 To proceed, type DESTROY exactly.
 To cancel, press Ctrl+C or q.`,
-		stepNum: 16,
+		stepNum: 17,
 	},
 }
 
-const totalSteps = 16
+const totalSteps = 17
+
+// Package set options (checkboxes -- minimal is always on)
+type packageOption struct {
+	Label string
+	Desc  string
+}
+
+var packageOptions = []packageOption{
+	{"TUI productivity suite", "neovim, helix, lazygit, btop, weechat, w3m, starship, atuin, zellij"},
+	{"Pentest tools", "aircrack-ng, nmap, metasploit, wireshark, termshark, hashcat, sqlmap"},
+	{"Terminal games", "angband, crawl, cataclysm-dda, vitetris, nudoku, nethack, frotz"},
+}
 
 // Config holds all installation configuration
 type Config struct {
@@ -389,6 +429,9 @@ type Config struct {
 	Locale        string
 	Keymap        string
 	ConsoleKeyMap string
+	EnableTUI     bool
+	EnablePentest bool
+	EnableGames   bool
 	EnableSSH     bool
 	GitHubUser    string
 	SSHKeys       []string
@@ -449,6 +492,7 @@ type model struct {
 	disks        []diskInfo
 	selectedIdx  int
 	diskSelected []bool // For multi-disk selection (toggle with space)
+	pkgSelected  []bool // For package set checkboxes [TUI, Pentest, Games]
 	locales      []string
 	keymaps      []keymapEntry
 

@@ -1,6 +1,7 @@
-# Software packages organized by category
-{ lib, ... }:
+# Software package sets for tuinix
+# Selected during installation via the package set chooser
+{ lib, config, ... }:
 
 {
-  imports = [ ./terminal ./system ./security ];
+  imports = [ ./minimal.nix ./tui.nix ./pentest.nix ./games.nix ];
 }
