@@ -120,7 +120,12 @@ jobs:
 
       - name: Prepare CVE summary
         run: |
-          TRIVY_FINDINGS=$(grep -c "HIGH\|CRITICAL" /tmp/trivy-results.txt 2>/dev/null || echo "0")
+          if [ -f /tmp/trivy-results.txt ]; then
+            TRIVY_FINDINGS=$(grep -c "HIGH\|CRITICAL" /tmp/trivy-results.txt || true)
+          else
+            TRIVY_FINDINGS=0
+          fi
+          TRIVY_FINDINGS=${TRIVY_FINDINGS:-0}
           echo "TRIVY_FINDINGS=$TRIVY_FINDINGS" >> $GITHUB_ENV
           if [ "$TRIVY_FINDINGS" -gt 0 ]; then
             echo "CVE_SUMMARY=:warning: $TRIVY_FINDINGS HIGH/CRITICAL findings" >> $GITHUB_ENV

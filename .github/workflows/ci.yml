@@ -167,8 +167,12 @@ jobs:
 
       - name: Count CVE findings
         run: |
-          TRIVY_FINDINGS=$(grep -c "HIGH\|CRITICAL" /tmp/trivy-results.txt 2>/dev/null || echo "0")
-          echo "TRIVY_FINDINGS=$TRIVY_FINDINGS" >> $GITHUB_ENV
+          if [ -f /tmp/trivy-results.txt ]; then
+            TRIVY_FINDINGS=$(grep -c "HIGH\|CRITICAL" /tmp/trivy-results.txt || true)
+          else
+            TRIVY_FINDINGS=0
+          fi
+          echo "TRIVY_FINDINGS=${TRIVY_FINDINGS:-0}" >> $GITHUB_ENV
 
       - name: Upload ISO
         uses: actions/upload-artifact@v4
