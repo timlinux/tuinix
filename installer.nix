@@ -29,8 +29,15 @@ let
       echo "${versionString}" > version.txt
     '';
   };
+  # Clean version string for ISO filename (strip leading 'v' if present)
+  isoVersion = lib.removePrefix "v" (lib.trim version);
 in {
   imports = [ (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix") ];
+
+  # Name the ISO after the project and version
+  image.fileName = "tuinix-${isoVersion}-${
+      if system == "x86_64-linux" then "x86_64" else "aarch64"
+    }.iso";
 
   # No extra pre-cached store contents beyond what the live system needs.
   # The base module automatically includes the system closure in the squashfs.

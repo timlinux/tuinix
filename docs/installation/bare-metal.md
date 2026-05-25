@@ -26,7 +26,7 @@ This guide covers installing tuinix on a real physical machine.
 ## Step 1: Get the ISO
 
 Download the latest ISO from the
-[releases page]({{ iso.releases_url }}) ({{ iso.version }}),
+[releases page]({{ iso.releases_url }}),
 or build it yourself:
 
 ```bash
@@ -43,11 +43,9 @@ cd tuinix
 ./scripts/build-iso.sh both
 ```
 
-!!! success "Fully Offline Installation"
-    The tuinix ISO includes the complete system closure - all packages
-    required for installation are pre-cached. No internet connection is
-    needed for standard configurations. This is ideal for air-gapped
-    environments or locations with poor connectivity.
+!!! info "Internet required"
+    An internet connection is needed during installation to download
+    packages from the NixOS binary cache.
 
 ## Step 2: Flash the ISO to a USB drive
 
@@ -57,7 +55,7 @@ You need a USB drive of at least 4 GB. **All data on the drive will be destroyed
 
     ```bash
     # Identify your USB device (check with lsblk first!)
-    sudo dd if={{ iso.filename }} of=/dev/sdX bs=4M status=progress oflag=sync
+    sudo dd if=tuinix-*.iso of=/dev/sdX bs=4M status=progress oflag=sync
     ```
 
     Replace `/dev/sdX` with your actual USB device (e.g. `/dev/sdb`). **Triple-check** you have the right device -- `dd` will happily overwrite your main disk.
@@ -67,7 +65,7 @@ You need a USB drive of at least 4 GB. **All data on the drive will be destroyed
     ```bash
     # Find the disk number with diskutil list
     diskutil unmountDisk /dev/diskX
-    sudo dd if={{ iso.filename }} of=/dev/rdiskX bs=4m
+    sudo dd if=tuinix-*.iso of=/dev/rdiskX bs=4m
     diskutil eject /dev/diskX
     ```
 

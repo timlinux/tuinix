@@ -33,7 +33,7 @@ An internet connection is required during installation.
 
 ### :material-download: 1. Get the ISO
 
-Download [{{ iso.filename }}]({{ iso.download_url }}) ({{ iso.version }}) or build it yourself from source.
+[Download the latest ISO]({{ iso.releases_url }}) or build it yourself from source.
 
 ```bash
 # Or build from source
@@ -56,7 +56,7 @@ Use [balenaEtcher](https://etcher.balena.io/) or
 ??? tip "Advanced: using dd"
 
     ```bash
-    sudo dd if={{ iso.filename }} of=/dev/sdX bs=4M status=progress
+    sudo dd if=tuinix-*.iso of=/dev/sdX bs=4M status=progress
     ```
 
 </div>

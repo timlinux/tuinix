@@ -31,7 +31,7 @@ connection may be required to fetch additional packages.
 ## Get the ISO
 
 Download the latest ISO from the
-[releases page]({{ iso.releases_url }}) ({{ iso.version }}),
+[releases page]({{ iso.releases_url }}),
 or build it yourself:
 
 ```bash
