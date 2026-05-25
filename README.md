@@ -1,200 +1,76 @@
 <div align="center">
-  <img src=".github/assets/LOGO.png" alt="tuinix logo" width="120" height="120">
 
-# TUINIX
+<img src=".github/assets/LOGO.png" alt="tuinix mascot" width="200">
 
-A Pure Terminal Based Linux Experience
+# tuinix
 
-<!-- CI/CD Status -->
-![CI](https://github.com/timlinux/tuinix/workflows/CI/badge.svg)
-![Release](https://github.com/timlinux/tuinix/workflows/Release/badge.svg)
+**A terminal-first Linux distribution built on NixOS.**
 
-<!-- Quality -->
-[![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
-[![Nix Format](https://img.shields.io/badge/nix-fmt-blue.svg)](https://nixos.org/)
-[![Shell Check](https://img.shields.io/badge/shell-check-green.svg)](https://www.shellcheck.net/)
+Reproducible, declarative, ZFS-encrypted. Choose your tools: productivity suite,
+penetration testing, or retro terminal games -- all from a beautiful TUI installer.
 
-<!-- Security -->
-[![Security: Trivy](https://img.shields.io/badge/security-trivy-blue.svg)](https://github.com/aquasecurity/trivy)
-[![Secrets: Detection](https://img.shields.io/badge/secrets-detection-red.svg)](https://github.com/Yelp/detect-secrets)
+[![Download ISO](https://img.shields.io/github/v/release/timlinux/tuinix?label=Download%20ISO&style=for-the-badge&logo=nixos&color=5277C3)](https://github.com/timlinux/tuinix/releases/latest)
 
-<!-- Project Info -->
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Nix](https://img.shields.io/badge/built%20with-nix-blue.svg)](https://nixos.org/)
-[![ZFS](https://img.shields.io/badge/filesystem-ZFS-orange.svg)](https://openzfs.org/)
-
-<!-- Documentation -->
-[![Docs](https://img.shields.io/badge/docs-timlinux.github.io%2Ftuinix-blue.svg)](https://timlinux.github.io/tuinix/)
-
-<!-- Community -->
-[![Contributors](https://img.shields.io/github/contributors/timlinux/tuinix.svg)](https://github.com/timlinux/tuinix/graphs/contributors)
-[![Issues](https://img.shields.io/github/issues/timlinux/tuinix.svg)](https://github.com/timlinux/tuinix/issues)
-[![Pull Requests](https://img.shields.io/github/issues-pr/tuinix.svg)](https://github.com/timlinux/tuinix/pulls)
+[![CI](https://img.shields.io/github/actions/workflow/status/timlinux/tuinix/ci.yml?branch=main&label=CI&logo=github)](https://github.com/timlinux/tuinix/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/timlinux/tuinix/release.yml?label=Release&logo=github)](https://github.com/timlinux/tuinix/actions/workflows/release.yml)
+[![License](https://img.shields.io/github/license/timlinux/tuinix?color=yellow)](LICENSE)
+[![Trivy](https://img.shields.io/badge/security-trivy-blue?logo=aquasecurity)](https://github.com/timlinux/tuinix/actions)
+[![NixOS](https://img.shields.io/badge/NixOS-unstable-5277C3?logo=nixos)](https://nixos.org)
+[![ZFS](https://img.shields.io/badge/ZFS-encrypted-orange)](https://openzfs.org)
+[![Docs](https://img.shields.io/badge/docs-online-blue)](https://timlinux.github.io/tuinix/)
 
 </div>
 
-A terminal-centric Linux distribution built on NixOS with ZFS
-encryption. No desktop environment, no window manager -- just a
-carefully curated set of terminal tools on a reproducible,
-declarative foundation.
-
 ---
 
-> <img src=".github/assets/LOGO.png" width="24">
-> **Ready to install? Jump straight to the
-> [Installation Guide](https://timlinux.github.io/tuinix/installation/).**
+## Getting Started
 
----
+1. **Download** the latest ISO from the [releases page](https://github.com/timlinux/tuinix/releases/latest)
+2. **Flash** it to a USB drive and boot (UEFI required, Secure Boot off)
+3. **Run** `sudo installer` and follow the TUI wizard
 
-## Three Environments
+The installer guides you through account setup, disk selection (including
+ZFS encryption and dual-boot), and package set selection. Full docs at
+**[timlinux.github.io/tuinix](https://timlinux.github.io/tuinix/)**.
 
-tuinix has three distinct contexts. Pick the one that matches
-where you are right now.
+## Package Sets
 
-### 1. Development Environment
+During installation, choose which optional package sets to enable:
 
-*You're a contributor working on the tuinix flake, building ISOs,
-or hacking on modules.*
-
-This is where the NixOS configuration, installer scripts, and ISO
-builder live. You work here on your existing machine (NixOS or any
-system with Nix installed) to build, test, and iterate.
-
-**What you can do here:**
-
-- Build the installer ISO
-- Test in a VM
-- Add or modify NixOS modules
-- Run quality checks
-
-```bash
-git clone https://github.com/timlinux/tuinix.git
-cd tuinix
-nix run .#test-install           # Build ISO and test in QEMU VM
-./scripts/build-iso.sh           # Build the ISO standalone
-nix flake check                  # Validate the flake
-```
-
-> <img src=".github/assets/LOGO.png" width="20">
-> Full details:
-> [Development Guide](https://timlinux.github.io/tuinix/contributing/development/)
-
----
-
-### 2. Installation Environment
-
-*You have the ISO and want to install tuinix on a machine.*
-
-The ISO includes the installer and system configuration. An
-internet connection is required during installation.
-
-**Choose your target:**
-
-#### Virtual Machine
-
-Best for testing or trying tuinix without touching your hardware.
-Key requirements:
-
-- UEFI firmware (**not** legacy BIOS)
-- Secure Boot **disabled** (ZFS modules are unsigned)
-- Disk serial number configured (for ZFS pool import)
-- At least 4 GB RAM and 20 GB disk
-
-> <img src=".github/assets/LOGO.png" width="20">
-> Full details:
-> [VM Installation Guide](https://timlinux.github.io/tuinix/installation/vm/)
-
-#### Bare Metal
-
-Install directly on a physical machine. You'll need:
-
-- A USB drive (4 GB+) flashed with the ISO
-- UEFI boot mode enabled, Secure Boot disabled
-- At least 4 GB RAM and 20 GB storage
-
-Flash the ISO:
-
-```bash
-sudo dd if=tuinix.iso of=/dev/sdX bs=4M status=progress oflag=sync
-```
-
-Boot from USB -- you'll land in `/home/tuinix` with a welcome
-message. Run:
-
-```bash
-sudo installer
-```
-
-> <img src=".github/assets/LOGO.png" width="20">
-> Full details:
-> [Bare Metal Guide](https://timlinux.github.io/tuinix/installation/bare-metal/)
-
----
-
-### 3. Post-Install Environment
-
-*You've installed tuinix and are booting into it for the first
-time.*
-
-After installation you'll have a pure terminal environment with:
-
-- ZFS-encrypted root filesystem with snapshot support
-- Pre-configured shell, multiplexer, and editor
-- System monitoring and networking tools
-- Your tuinix flake at `~/tuinix` for further customization
-
-Customize your system:
-
-```bash
-cd ~/tuinix
-# Make changes to the configuration
-./scripts/rebuild.sh
-```
-
-> <img src=".github/assets/LOGO.png" width="20">
-> Full details:
-> [Post-Install Guide](https://timlinux.github.io/tuinix/usage/post-install/)
-
----
+| | Minimal | TUI | Pentest | Games |
+|---|---------|-----|---------|-------|
+| Base tools (vim, git, curl, htop, tmux) | Always | Always | Always | Always |
+| Terminal productivity (neovim, lazygit, btop, w3m, starship) | | Yes | | |
+| Messaging (nchat, gomuks, scli, aerc) | | Yes | | |
+| Calendar & contacts (khal, khard, todoman) | | Yes | | |
+| Security auditing (aircrack-ng, nmap, metasploit, hashcat) | | | Yes | |
+| Network analysis (wireshark, termshark, sqlmap) | | | Yes | |
+| Roguelikes (angband, crawl, cataclysm-dda) | | | | Yes |
+| Puzzles & classics (nudoku, vitetris, bsdgames, frotz) | | | | Yes |
 
 ## Features
 
-- **NixOS + Flakes** -- Fully reproducible, declarative
-  system configuration with instant rollbacks
-- **ZFS with encryption** -- Advanced filesystem with
-  compression, checksums, and snapshots
-- **Terminal only** -- No X11, no Wayland. Minimal resource
-  usage, maximum productivity
-- **Interactive TUI installer** -- Go-based wizard with
-  account setup, disk selection, encryption, and locale configuration
+- **NixOS + Flakes** -- Fully reproducible, declarative, instant rollbacks
+- **ZFS encryption** -- AES-256-GCM, compression, snapshots, self-healing
+- **Multi-disk** -- Stripe, raidz, raidz2 for redundancy
+- **Dual-boot** -- XFS partition mode for existing setups
+- **TUI installer** -- Beautiful Go-based wizard with live progress
+- **CI/CD** -- Every PR builds an ISO with SBOM and CVE scan
+
+## Documentation
+
+| | |
+|---|---|
+| [Installation Guide](https://timlinux.github.io/tuinix/installation/) | Bare metal, VM, and dual-boot setup |
+| [Post-Install Guide](https://timlinux.github.io/tuinix/usage/post-install/) | Package sets, daily usage, system updates |
+| [ZFS Management](https://timlinux.github.io/tuinix/usage/zfs/) | Snapshots, scrubs, recovery |
+| [Development Guide](https://timlinux.github.io/tuinix/contributing/development/) | Build, test, contribute |
 
 ## Contributing
-
-We welcome contributions. See the
-[Contributing Guide](.github/CONTRIBUTING.md) for details.
 
 - [Report a bug](https://github.com/timlinux/tuinix/issues/new?template=bug_report.yml)
 - [Request a feature](https://github.com/timlinux/tuinix/issues/new?template=feature_request.yml)
 - [Ask a question](https://github.com/timlinux/tuinix/issues/new?template=question.yml)
-
-## Documentation
-
-Full documentation is available at
-**[timlinux.github.io/tuinix](https://timlinux.github.io/tuinix/)**.
-
-| Document | Description |
-|----------|-------------|
-| [Installation Guide][inst] | Bare metal and VM installation |
-| [Post-Install Guide][post] | First boot and daily usage |
-| [ZFS Management][zfs] | Snapshots, scrubs, and recovery |
-| [Development Guide][dev] | Building, testing, contributing |
-| [AI/LLM Policy][ai] | Tool-assisted contribution guidelines |
-
-[inst]: https://timlinux.github.io/tuinix/installation/
-[post]: https://timlinux.github.io/tuinix/usage/post-install/
-[zfs]: https://timlinux.github.io/tuinix/usage/zfs/
-[dev]: https://timlinux.github.io/tuinix/contributing/development/
-[ai]: https://timlinux.github.io/tuinix/contributing/ai-policy/
 
 ## License
 
@@ -202,4 +78,12 @@ MIT -- see [LICENSE](LICENSE).
 
 ---
 
-Made with :heart: by [Kartoza](https://kartoza.com) | [Donate](https://github.com/sponsors/timlinux) | [GitHub](https://github.com/timlinux/tuinix)
+<div align="center">
+
+Made with :heart: by **[Kartoza](https://kartoza.com)**
+
+[![Sponsor](https://img.shields.io/badge/Sponsor-timlinux-ea4aaa?logo=github-sponsors)](https://github.com/sponsors/timlinux)
+[![Kartoza](https://img.shields.io/badge/Kartoza-kartoza.com-e95420)](https://kartoza.com)
+[![GitHub](https://img.shields.io/badge/Source-GitHub-333?logo=github)](https://github.com/timlinux/tuinix)
+
+</div>

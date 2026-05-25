@@ -209,23 +209,6 @@ jobs:
           SBOM (CycloneDX JSON) is attached as a release asset.
           EOF
 
-      - name: Update docs ISO references
-        run: |
-          TAG=${{ steps.tag.outputs.tag }}
-          ISO_FILE=$(basename result/iso/*.iso)
-          DOWNLOAD_URL="https://github.com/timlinux/tuinix/releases/download/${TAG}/${ISO_FILE}"
-
-          sed -i "s|version: \".*\"|version: \"${TAG}\"|" mkdocs.yml
-          sed -i "s|filename: \".*\"|filename: \"${ISO_FILE}\"|" mkdocs.yml
-          sed -i "s|download_url: \".*\"|download_url: \"${DOWNLOAD_URL}\"|" mkdocs.yml
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add mkdocs.yml
-          git diff --cached --quiet || git commit -m "docs: update ISO references to ${TAG}"
-          git push origin HEAD:main
-        continue-on-error: true
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
