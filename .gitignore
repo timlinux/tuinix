@@ -53,7 +53,7 @@ npm-debug.log*
 *.p12
 *.pem
 *.pfx
-!PROMPT.log
+PROMPT.log
 __pycache__/
 *.py[cod]
 .pytest_cache/
