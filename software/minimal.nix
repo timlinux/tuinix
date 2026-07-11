@@ -5,10 +5,8 @@
 with lib;
 
 let
-  # System menu launcher (dotfile in ./menu, deployed via wrapper)
-  tuinixMenu = pkgs.writeShellScriptBin "tuinix-menu" ''
-    exec ${pkgs.bash}/bin/bash ${./menu/tuinix-menu.sh} "$@"
-  '';
+  # System menu launcher (shared with the flake's nix run .#menu app)
+  tuinixMenu = import ./menu/wrapper.nix { inherit pkgs; };
 in {
   options.tuinix.packages = {
     tui = mkEnableOption

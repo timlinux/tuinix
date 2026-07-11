@@ -10,13 +10,8 @@
 with lib;
 
 let
-  # Kiosk launcher (dotfile in ./emergency, deployed via wrapper)
-  emergencyGui = pkgs.writeShellScriptBin "tuinix-emergency-gui" ''
-    export CAGE_BIN="${pkgs.cage}/bin/cage"
-    export BRAVE_BIN="${pkgs.brave}/bin/brave"
-    export BWRAP_BIN="${pkgs.bubblewrap}/bin/bwrap"
-    exec ${pkgs.bash}/bin/bash ${./emergency/emergency-gui.sh} "$@"
-  '';
+  # Kiosk launcher (shared with the flake's nix run .#emergency-gui app)
+  emergencyGui = import ./emergency/wrapper.nix pkgs;
 in {
   config = mkIf config.tuinix.packages.emergency {
     environment.systemPackages = [ emergencyGui ];

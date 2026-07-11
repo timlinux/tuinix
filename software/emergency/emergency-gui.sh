@@ -81,10 +81,20 @@ if [[ "${EMERGENCY_GUI_INNER:-}" == "1" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Outer phase: sanity checks, then start the cage kiosk.
+# Outer phase: pick the right mode for where we are running.
+#   - Console (TTY): start the cage kiosk with the sandboxed browser.
+#   - Existing Wayland session: skip cage, launch the sandboxed browser
+#     as a window in the current session (same privacy guarantees).
 # ---------------------------------------------------------------------------
-if [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
-    echo "Error: a graphical session is already running." >&2
+if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    echo "🚨 Wayland session detected — launching sandboxed private Brave in it..."
+    echo "   • Incognito, profile on tmpfs: nothing is written to disk/ZFS"
+    echo "   • Sandboxed with bubblewrap: your files are not visible to it"
+    EMERGENCY_GUI_INNER=1 exec bash "${BASH_SOURCE[0]}" "$@"
+fi
+
+if [[ -n "${DISPLAY:-}" ]]; then
+    echo "Error: X11-only session detected; run from a console TTY or Wayland." >&2
     exit 1
 fi
 
