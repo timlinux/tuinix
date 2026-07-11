@@ -49,6 +49,13 @@ cd tuinix
 
 ## Step 2: Flash the ISO to a USB drive
 
+Every ISO ships with a matching checksum file
+(`tuinix-<arch>-<version>.md5`). Verify your download first:
+
+```bash
+md5sum -c tuinix-x86_64-*.md5
+```
+
 You need a USB drive of at least 4 GB. **All data on the drive will be destroyed.**
 
 === "Linux"
@@ -115,15 +122,31 @@ The live ISO includes iPhone USB tethering support out of the box:
 
 ### WiFi
 
-For WiFi, use `wpa_supplicant` or `nmcli`:
+The live environment ships [impala](https://github.com/pythops/impala), a
+friendly TUI for WiFi management (backed by `iwd`). Just run:
 
 ```bash
-# Using wpa_supplicant
-sudo wpa_supplicant -B -i wlan0 -c <(wpa_passphrase "SSID" "password")
-sudo dhcpcd wlan0
+impala
+```
 
-# Or using nmcli if NetworkManager is available
-sudo nmcli device wifi connect "SSID" password "password"
+Select your network, enter the passphrase, and you are connected — DHCP
+is handled automatically. If you prefer the command line, `iwctl` is
+also available:
+
+```bash
+iwctl station wlan0 connect "SSID"
+```
+
+### Rescue SSH access
+
+The SSH server is installed on the live ISO but **not started** — the
+live root password is well known, so exposing sshd unsolicited would be
+unsafe. If you need remote access for a rescue session:
+
+```bash
+passwd                  # set a strong root password first!
+systemctl start sshd
+ip addr                 # find your IP, then ssh root@<ip> from elsewhere
 ```
 
 ## Step 4: Run the installer
