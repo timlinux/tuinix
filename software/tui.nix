@@ -52,7 +52,7 @@ in {
 
         # Communication -- multi-protocol terminal clients
         nchat # Telegram and WhatsApp
-        gomuks # Matrix
+        iamb # Matrix (vodozemac crypto; gomuks was dropped: insecure libolm)
         scli # Signal (via signal-cli)
         signal-cli
         aerc # Email

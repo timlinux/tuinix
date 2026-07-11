@@ -3,5 +3,12 @@
 { lib, config, ... }:
 
 {
-  imports = [ ./minimal.nix ./tui.nix ./pentest.nix ./games.nix ];
+  imports = [
+    ./minimal.nix
+    ./tui.nix
+    ./pentest.nix
+    ./games.nix
+    ./music.nix
+    ./emergency.nix
+  ];
 }
