@@ -106,9 +106,37 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case stateSplash, stateNetworkCheck, stateDisk, stateDiskMulti, statePartitionBoot, statePartitionRoot, stateLocale, stateKeymap, statePackageSet, stateSSH, stateSummary, stateStorageMode, stateComplete, stateError:
 				return m, tea.Quit
 			}
+		case "tab", "shift+tab":
+			// Cycle focus: content -> back button -> next button -> content
+			if _, isWizard := wizardSteps[m.state]; isWizard {
+				if msg.String() == "tab" {
+					m.focusZone = (m.focusZone + 1) % 3
+				} else {
+					m.focusZone = (m.focusZone + 2) % 3
+				}
+				if m.focusZone == 0 {
+					m.input.Focus()
+				} else {
+					m.input.Blur()
+				}
+				return m, nil
+			}
 		case "enter":
 			if m.state != stateFireTransition && m.state != stateGravityOut && m.state != stateSplash {
-				return m.handleEnter()
+				if _, isWizard := wizardSteps[m.state]; isWizard && m.focusZone == 1 {
+					return m.handleBack()
+				}
+				prevState := m.state
+				newModel, cmd := m.handleEnter()
+				if nm, ok := newModel.(model); ok {
+					if _, wasWizard := wizardSteps[prevState]; wasWizard && nm.state != prevState {
+						nm.history = append(nm.history, prevState)
+					}
+					nm.focusZone = 0
+					nm.input.Focus()
+					return nm, cmd
+				}
+				return newModel, cmd
 			}
 		case " ":
 			if m.state == stateDiskMulti && m.selectedIdx < len(m.disks) {
@@ -293,6 +321,67 @@ func (m model) handleTick() (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// handleBack returns to the previously visited wizard step (the Previous
+// button). On the first step the button acts as Cancel and quits.
+func (m model) handleBack() (tea.Model, tea.Cmd) {
+	if len(m.history) == 0 {
+		return m, tea.Quit
+	}
+	m.state = m.history[len(m.history)-1]
+	m.history = m.history[:len(m.history)-1]
+	m.err = nil
+	m.focusZone = 0
+	m.prepareStateInput()
+	m.input.Focus()
+	return m, nil
+}
+
+// prepareStateInput restores the text input and selection state for the
+// step we navigate back to. Values already captured in the config are
+// offered again for editing; secrets are always re-entered.
+func (m *model) prepareStateInput() {
+	m.input.EchoMode = textinput.EchoNormal
+	m.input.EchoCharacter = 0
+	m.input.SetValue("")
+	m.selectedIdx = 0
+
+	switch m.state {
+	case stateUsername:
+		m.input.Placeholder = "e.g., john, alice"
+		m.input.SetValue(m.config.Username)
+	case stateFullname:
+		m.input.Placeholder = "e.g., John Smith"
+		m.input.SetValue(m.config.Fullname)
+	case stateEmail:
+		m.input.Placeholder = "e.g., john@example.com"
+		m.input.SetValue(m.config.Email)
+	case statePassword:
+		m.input.Placeholder = "Enter account password"
+		m.input.EchoMode = textinput.EchoPassword
+		m.input.EchoCharacter = '*'
+	case statePasswordConfirm:
+		m.input.Placeholder = "Re-enter password to confirm"
+		m.input.EchoMode = textinput.EchoPassword
+		m.input.EchoCharacter = '*'
+	case stateHostname:
+		m.input.Placeholder = "e.g., laptop, desktop, server"
+		m.input.SetValue(m.config.Hostname)
+	case statePassphrase:
+		m.input.Placeholder = "Enter ZFS encryption passphrase"
+		m.input.EchoMode = textinput.EchoPassword
+		m.input.EchoCharacter = '*'
+	case statePassphraseConfirm:
+		m.input.Placeholder = "Re-enter passphrase to confirm"
+		m.input.EchoMode = textinput.EchoPassword
+		m.input.EchoCharacter = '*'
+	case stateGitHubUser:
+		m.input.Placeholder = "e.g., octocat"
+		m.input.SetValue(m.config.GitHubUser)
+	case stateConfirm:
+		m.input.Placeholder = "Type DESTROY to confirm"
+	}
 }
 
 func (m model) handleEnter() (tea.Model, tea.Cmd) {
@@ -516,6 +605,8 @@ func (m model) handleEnter() (tea.Model, tea.Cmd) {
 		m.config.EnableTUI = m.pkgSelected[0]
 		m.config.EnablePentest = m.pkgSelected[1]
 		m.config.EnableGames = m.pkgSelected[2]
+		m.config.EnableMusic = m.pkgSelected[3]
+		m.config.EnableEmergency = m.pkgSelected[4]
 		m.state = stateSSH
 		m.selectedIdx = 0
 

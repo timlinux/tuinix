@@ -75,4 +75,16 @@ var (
 	footerStyle = lipgloss.NewStyle().
 			Foreground(colorGray).
 			Align(lipgloss.Center)
+
+	// Wizard navigation buttons (bottom-left / bottom-right, Tab to focus)
+	buttonStyle = lipgloss.NewStyle().
+			Foreground(colorOffWhite).
+			Background(colorBlue).
+			Padding(0, 2)
+
+	buttonFocusedStyle = lipgloss.NewStyle().
+				Foreground(colorWhite).
+				Background(colorOrange).
+				Bold(true).
+				Padding(0, 2)
 )

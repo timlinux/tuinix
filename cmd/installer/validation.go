@@ -9,8 +9,14 @@ import (
 	"time"
 )
 
+// reservedUsernames would collide with accounts the shipped configuration
+// already defines (or break evaluation entirely).
+var reservedUsernames = map[string]bool{
+	"root": true, "admin": true, "user": true, "nixos": true,
+}
+
 func isValidUsername(s string) bool {
-	if s == "" {
+	if s == "" || reservedUsernames[s] {
 		return false
 	}
 	matched, _ := regexp.MatchString(`^[a-z_][a-z0-9_-]*$`, s)
@@ -25,11 +31,18 @@ func isValidEmail(s string) bool {
 	return matched
 }
 
+// reservedHostnames resolve to flake outputs that are NOT the generated
+// host config (the ISO configs and the shipped example host).
+var reservedHostnames = map[string]bool{
+	"installer": true, "installer-aarch64": true, "laptop": true,
+}
+
 func isValidHostname(s string) bool {
-	if s == "" {
+	if s == "" || len(s) > 63 || reservedHostnames[s] {
 		return false
 	}
-	matched, _ := regexp.MatchString(`^[a-zA-Z0-9-]+$`, s)
+	// RFC 952/1123: no leading or trailing hyphen
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$`, s)
 	return matched
 }
 

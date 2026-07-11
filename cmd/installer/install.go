@@ -13,7 +13,7 @@ import (
 func runInstallation(c Config) tea.Cmd {
 	return func() tea.Msg {
 		logInfo("=== Starting installation ===")
-		logInfo("Config: Username=%s, Hostname=%s, Disk=%s, StorageMode=%s, TUI=%v, Pentest=%v, Games=%v, EnableSSH=%v", c.Username, c.Hostname, c.Disk, c.StorageMode, c.EnableTUI, c.EnablePentest, c.EnableGames, c.EnableSSH)
+		logInfo("Config: Username=%s, Hostname=%s, Disk=%s, StorageMode=%s, TUI=%v, Pentest=%v, Games=%v, Music=%v, Emergency=%v, EnableSSH=%v", c.Username, c.Hostname, c.Disk, c.StorageMode, c.EnableTUI, c.EnablePentest, c.EnableGames, c.EnableMusic, c.EnableEmergency, c.EnableSSH)
 		if c.StorageMode.isMultiDisk() {
 			logInfo("Config: Disks=%v", c.Disks)
 		}
@@ -178,7 +178,7 @@ func generateHostConfig(c Config) error {
   users.users.%s = {
     isNormalUser = true;
     description = "%s";
-    extraGroups = [ "wheel" "networkmanager" "audio" "video" "docker" ];
+    extraGroups = [ "wheel" "networkmanager" "audio" "video" ];
     home = "/home/%s";
     createHome = true;
     hashedPassword = "%s";
@@ -263,6 +263,8 @@ func generateHostConfig(c Config) error {
   tuinix.packages.tui = %v;
   tuinix.packages.pentest = %v;
   tuinix.packages.games = %v;
+  tuinix.packages.music = %v;
+  tuinix.packages.emergency = %v;
 
 %s
 %s%s
@@ -278,7 +280,7 @@ func generateHostConfig(c Config) error {
   services.xserver.xkb.layout = "%s";
   console.keyMap = "%s";
 }
-`, c.Username, c.EnableTUI, c.EnablePentest, c.EnableGames, zfsConfig, sshConfig, bootloaderConfig, c.Locale, c.Keymap, c.ConsoleKeyMap)
+`, c.Username, c.EnableTUI, c.EnablePentest, c.EnableGames, c.EnableMusic, c.EnableEmergency, zfsConfig, sshConfig, bootloaderConfig, c.Locale, c.Keymap, c.ConsoleKeyMap)
 
 	if err := os.WriteFile(filepath.Join(hostDir, "default.nix"), []byte(defaultNix), 0644); err != nil {
 		return fmt.Errorf("write default.nix: %w", err)
@@ -477,8 +479,6 @@ func copyFlake(c Config) error {
 
 func setupUserFlake(c Config) error {
 	userDir := fmt.Sprintf("/mnt/home/%s/tuinix", c.Username)
-	hostDir := filepath.Join(c.WorkDir, "hosts", c.Hostname)
-	usersDir := filepath.Join(c.WorkDir, "users")
 	repoURL := "https://github.com/timlinux/tuinix.git"
 
 	userHome := fmt.Sprintf("/mnt/home/%s", c.Username)
@@ -486,31 +486,27 @@ func setupUserFlake(c Config) error {
 
 	os.RemoveAll(userDir)
 
-	// Clone the tuinix repo into the user's home directory
-	if _, err := runCommand("git", "clone", "--depth", "1", repoURL, userDir); err != nil {
-		return fmt.Errorf("git clone: %w", err)
+	// Seed ~/tuinix from the exact flake snapshot this system was built
+	// from (the work dir already contains the generated host and user
+	// config). No network needed; upstream is added as a git remote so
+	// the user can pull later if they want to track the project.
+	if err := os.MkdirAll(userDir, 0755); err != nil {
+		return fmt.Errorf("create user flake dir: %w", err)
+	}
+	if _, err := runCommand("cp", "-rL", c.WorkDir+"/.", userDir+"/"); err != nil {
+		return fmt.Errorf("copy flake to user dir: %w", err)
 	}
 
-	// Copy the generated host configuration into the cloned repo
-	destHostDir := filepath.Join(userDir, "hosts", c.Hostname)
-	os.MkdirAll(filepath.Dir(destHostDir), 0755)
-	if _, err := runCommand("cp", "-r", hostDir, destHostDir); err != nil {
-		return fmt.Errorf("copy host config: %w", err)
-	}
-
-	// Copy the generated user configuration
-	userNixSrc := filepath.Join(usersDir, c.Username+".nix")
-	userNixDst := filepath.Join(userDir, "users", c.Username+".nix")
-	if _, err := runCommand("cp", userNixSrc, userNixDst); err != nil {
-		return fmt.Errorf("copy user config: %w", err)
-	}
+	// Initialise a git repo (best effort -- the system works without it)
+	runCommand("git", "-C", userDir, "init", "-b", "main")
+	runCommand("git", "-C", userDir, "remote", "add", "origin", repoURL)
 
 	// Configure git identity
 	runCommand("git", "-C", userDir, "config", "user.name", c.Fullname)
 	runCommand("git", "-C", userDir, "config", "user.email", c.Email)
 
 	// Commit the generated configuration
-	runCommand("git", "-C", userDir, "add", "hosts/"+c.Hostname, "users/"+c.Username+".nix")
+	runCommand("git", "-C", userDir, "add", "-A")
 
 	commitMsg := fmt.Sprintf(`Add host and user configuration for %s
 
@@ -532,10 +528,14 @@ Keymap: %s`,
 
 	runCommand("git", "-C", userDir, "commit", "-m", commitMsg)
 
-	// Make /etc/tuinix a symlink to the user's copy - single source of truth
-	// Do this BEFORE chown so nixos-enter doesn't re-create files as root
-	runCommand("nixos-enter", "--root", "/mnt", "--command",
-		fmt.Sprintf("ln -sfn /home/%s/tuinix /etc/tuinix", c.Username))
+	// Make /etc/tuinix a symlink to the user's copy - single source of truth.
+	// The copyFlake step created /etc/tuinix as a real directory, and ln
+	// cannot replace a directory, so remove it first.
+	// Do this BEFORE chown so nixos-enter doesn't re-create files as root.
+	if out, err := runCommand("nixos-enter", "--root", "/mnt", "--command",
+		fmt.Sprintf("rm -rf /etc/tuinix && ln -sfn /home/%s/tuinix /etc/tuinix", c.Username)); err != nil {
+		logError("link /etc/tuinix failed: %v (%s)", err, out)
+	}
 
 	// Look up the user's UID and GID from the installed system
 	uidOutput, uidErr := runCommand("nixos-enter", "--root", "/mnt", "--command",
