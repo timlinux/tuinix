@@ -16,11 +16,14 @@ let
   commit = lib.removePrefix "Commit: "
     (builtins.head (lib.splitString " " commitLine));
   versionString = "${version} (${commit})";
+  # Clean version string for ISO filename and package versions
+  # (single point of truth: VERSION file -> build-info.txt -> here)
+  isoVersion = lib.removePrefix "v" (lib.trim version);
 
   # Build the Go TUI installer with version info
   tuinix-installer = pkgs.buildGoModule {
     pname = "tuinix-installer";
-    version = "1.0.0";
+    version = isoVersion;
     src = ./cmd/installer;
     vendorHash = "sha256-PLBuZeKhfuwcln0eOFwwLag4y+tr9PQj0zvYuCtMO/c=";
     ldflags = [ "-s" "-w" ];
@@ -29,15 +32,15 @@ let
       echo "${versionString}" > version.txt
     '';
   };
-  # Clean version string for ISO filename (strip leading 'v' if present)
-  isoVersion = lib.removePrefix "v" (lib.trim version);
 in {
   imports = [ (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix") ];
 
-  # Name the ISO after the project and version
-  image.fileName = "tuinix-${isoVersion}-${
+  # Name the ISO after the project: tuinix-<architecture>-<version>.iso
+  # (the ISO builder derives the artifact name from image.baseName;
+  # image.fileName follows as "<baseName>.iso")
+  image.baseName = lib.mkForce "tuinix-${
       if system == "x86_64-linux" then "x86_64" else "aarch64"
-    }.iso";
+    }-${isoVersion}";
 
   # No extra pre-cached store contents beyond what the live system needs.
   # The base module automatically includes the system closure in the squashfs.
@@ -67,6 +70,14 @@ in {
     {
       source = ./modules;
       target = "/tuinix/modules";
+    }
+    {
+      source = ./software;
+      target = "/tuinix/software";
+    }
+    {
+      source = ./profiles;
+      target = "/tuinix/profiles";
     }
     {
       source = ./users;
@@ -105,6 +116,11 @@ in {
       nixos-install-tools
       mkpasswd
       util-linux
+      # Welcome screen and helper scripts
+      gum
+      catimg
+      # WiFi management TUI (drives iwd)
+      impala
       # iPhone USB tethering support
       libimobiledevice
       ifuse
@@ -113,8 +129,12 @@ in {
     # ZFS only available on x86_64
     ++ lib.optionals (system == "x86_64-linux") [ zfs ];
 
-  # Enable SSH
+  # SSH: installed for rescue use but NOT started by default. The live
+  # ISO has a well-known root password, so exposing sshd unsolicited
+  # would let anyone on the LAN log in during installation. To enable
+  # rescue access run:  passwd && systemctl start sshd
   services.openssh.enable = true;
+  systemd.services.sshd.wantedBy = lib.mkForce [ ];
 
   # Enable iPhone USB tethering support
   services.usbmuxd.enable = true;
@@ -134,6 +154,13 @@ in {
   # Minimal network configuration (faster than NetworkManager)
   networking.useDHCP = lib.mkForce true;
   networking.firewall.enable = lib.mkForce false;
+
+  # WiFi: iwd + impala (TUI) instead of wpa_supplicant/NetworkManager
+  networking.wireless.enable = lib.mkForce false;
+  networking.wireless.iwd = {
+    enable = true;
+    settings.General.EnableNetworkConfiguration = true;
+  };
 
   # Disable everything not needed for a terminal installer
   services.udisks2.enable = lib.mkForce false;
