@@ -82,3 +82,9 @@ yarn-debug.log*
 yarn-error.log*
 .tuinix-test-OVMF_VARS.fd
 tuinix-test.qcow2
+screenshots-gitignored
+
+# Local artifacts and scratch
+*.md5
+/music/
+cmd/installer/installer

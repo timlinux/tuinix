@@ -2,8 +2,10 @@
 # Upload x86_64 ISO to GitHub release
 set -e
 
-ISO_FILE="tuinix.v0.7.0.x86_64.iso"
-RELEASE_TAG="v0.7.0"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+RELEASE_TAG="v$(tr -d '[:space:]' <VERSION)"
+ISO_FILE="tuinix-x86_64-${RELEASE_TAG#v}.iso"
+MD5_FILE="${ISO_FILE%.iso}.md5"
 
 echo "=========================================="
 echo "Uploading x86_64 ISO to GitHub Release"
@@ -23,7 +25,11 @@ echo ""
 echo "Starting upload..."
 echo "Started: $(date)"
 
-gh release upload "$RELEASE_TAG" "$ISO_FILE" --clobber
+if [[ ! -f "$MD5_FILE" ]]; then
+    md5sum "$ISO_FILE" >"$MD5_FILE"
+fi
+
+gh release upload "$RELEASE_TAG" "$ISO_FILE" "$MD5_FILE" --clobber
 
 echo ""
 echo "=========================================="

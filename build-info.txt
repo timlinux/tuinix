@@ -1,6 +1,6 @@
 tuinix Build Information
 ==============================
-Version: v0.7.1-11-g6a77bb1-dirty
-Build Date: 2026-05-24 23:14:04 UTC
-Commit: 6a77bb1 (main)
+Version: v0.8.0-dev-g977deb2-dirty
+Build Date: 2026-07-11 15:22:36 UTC
+Commit: 977deb2 (hotfix/cleanup)
 Builder: timlinux@abyss

@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# Build Monitor Script for tuinix v0.7.0
-# Monitors x86_64, aarch64, and R36S builds and displays progress in a table
+# Build Monitor Script for tuinix
+# Monitors x86_64 and aarch64 builds and displays progress in a table
 
 set -e
+
+# Version comes from the VERSION file (single point of truth)
+TUINIX_VERSION="v$(tr -d '[:space:]' <"$(dirname "${BASH_SOURCE[0]}")/VERSION" 2>/dev/null || echo dev)"
 
 # Colors for output
 RED='\033[0;31m'
@@ -15,13 +18,12 @@ NC='\033[0m' # No Color
 BUILDS=(
     "x86_64:result-x86_64"
     "aarch64:result-aarch64"
-    "R36S:result-r36s"
 )
 
 print_header() {
     clear
     echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║${NC}              ${GREEN}tuinix v0.7.0 Build Monitor${NC}                            ${BLUE}║${NC}"
+    echo -e "${BLUE}║${NC}              ${GREEN}tuinix $TUINIX_VERSION Build Monitor${NC}                            ${BLUE}║${NC}"
     echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo -e "Last updated: $(date '+%Y-%m-%d %H:%M:%S')"
@@ -110,7 +112,8 @@ check_nix_processes() {
     echo "─────────────────────────────────────────────────────────────────"
 
     # Check for nix-build or nix build processes
-    local procs=$(ps aux | grep -E "nix.*(build|daemon)" | grep -v grep | head -5)
+    local procs
+    procs=$(ps aux | grep -E "nix.*(build|daemon)" | grep -v grep | head -5)
     if [[ -n "$procs" ]]; then
         echo "$procs" | while read line; do
             echo "  $(echo "$line" | awk '{print $2, $11, $12, $13}' | head -c 70)"
