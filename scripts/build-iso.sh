@@ -6,8 +6,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-# Version for ISO naming - defaults to latest git tag or 'dev'
-VERSION="${TUINIX_VERSION:-$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")}"
+# Version for ISO naming - the VERSION file is the single point of truth
+VERSION="${TUINIX_VERSION:-v$(tr -d '[:space:]' <"$PROJECT_ROOT/VERSION")}"
+
+# Works both in CI (features preconfigured) and on stock nix installs
+export NIX_CONFIG="experimental-features = nix-command flakes"
 
 # Architecture selection - defaults to x86_64
 ARCH="${1:-x86_64}"
@@ -19,7 +22,7 @@ case "$ARCH" in
   *)
     echo "Usage: $0 [x86_64|aarch64|both]"
     echo "  x86_64  - Build ISO for x86_64 (default)"
-    echo "  aarch64 - Build ISO for aarch64 (R36S, ARM devices)"
+    echo "  aarch64 - Build ISO for aarch64 (ARM devices)"
     echo "  both    - Build ISOs for both architectures"
     exit 1
     ;;
@@ -55,11 +58,11 @@ if [[ -L "result" ]]; then
   gum style --foreground="#00cc00" "  ✅ Removed previous build result"
 fi
 
-# Remove any existing ISO files
-for iso_file in tuinix.*.iso; do
+# Remove any existing ISO and checksum files (old and new naming schemes)
+for iso_file in tuinix.*.iso tuinix-*.iso tuinix-*.md5; do
   if [[ -f "$iso_file" ]]; then
     rm "$iso_file"
-    gum style --foreground="#00cc00" "  ✅ Removed previous ISO: $iso_file"
+    gum style --foreground="#00cc00" "  ✅ Removed previous artifact: $iso_file"
   fi
 done
 
@@ -217,8 +220,8 @@ build_iso_for_arch() {
       "📀 ISO location: $ISO_PATH" \
       "📁 ISO name: $ISO_NAME"
 
-    # Determine final ISO name (include arch in name)
-    FINAL_ISO_NAME="tuinix.${VERSION}.${arch}.iso"
+    # Canonical artifact name: tuinix-<architecture>-<version>.iso
+    FINAL_ISO_NAME="tuinix-${arch}-${VERSION#v}.iso"
     if [[ -f "./$FINAL_ISO_NAME" ]]; then
       gum style --foreground="#ffaa00" "⚠️  Removing existing ISO: ./$FINAL_ISO_NAME"
       sudo rm "./$FINAL_ISO_NAME"
@@ -253,6 +256,11 @@ build_iso_for_arch() {
       fi
     fi
 
+    # Generate the matching checksum: tuinix-<architecture>-<version>.md5
+    FINAL_MD5_NAME="${FINAL_ISO_NAME%.iso}.md5"
+    md5sum "$FINAL_ISO_NAME" >"$FINAL_MD5_NAME"
+    gum style --foreground="#00cc00" "✅ Checksum written: ./$FINAL_MD5_NAME"
+
     # Show final information
     ISO_SIZE=$(du -h "./$FINAL_ISO_NAME" | cut -f1)
 
@@ -265,6 +273,7 @@ build_iso_for_arch() {
       "" \
       "📊 ISO Information:" \
       "  📁 Name: $FINAL_ISO_NAME" \
+      "  🔑 Checksum: $FINAL_MD5_NAME" \
       "  📏 Size: $ISO_SIZE" \
       "  🏷️  Version: $VERSION" \
       "" \
@@ -300,8 +309,8 @@ if [[ "$ARCH" == "both" ]]; then
     "🎉 All ISO Builds Complete!" \
     "" \
     "Built ISOs:" \
-    "  📀 tuinix.${VERSION}.x86_64.iso" \
-    "  📀 tuinix.${VERSION}.aarch64.iso"
+    "  📀 tuinix-x86_64-${VERSION#v}.iso (+ .md5)" \
+    "  📀 tuinix-aarch64-${VERSION#v}.iso (+ .md5)"
 else
   build_iso_for_arch "$ARCH" || exit 1
 fi

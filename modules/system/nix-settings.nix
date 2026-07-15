@@ -7,10 +7,9 @@ let
   isX86Host = pkgs.stdenv.hostPlatform.system == "x86_64-linux";
 in {
   # Enable QEMU binfmt emulation for cross-architecture builds
-  # This allows building armv7l (R36S) and aarch64 packages on x86_64
+  # This allows building aarch64 packages on x86_64
   # Only applies when the host is x86_64-linux
-  boot.binfmt.emulatedSystems =
-    lib.mkIf isX86Host [ "aarch64-linux" "armv7l-linux" ];
+  boot.binfmt.emulatedSystems = lib.mkIf isX86Host [ "aarch64-linux" ];
 
   # Nix configuration
   nix = {
@@ -20,7 +19,7 @@ in {
 
       # Allow building for emulated architectures (via binfmt)
       # Only applies when the host is x86_64-linux
-      extra-platforms = lib.mkIf isX86Host [ "aarch64-linux" "armv7l-linux" ];
+      extra-platforms = lib.mkIf isX86Host [ "aarch64-linux" ];
 
       # Binary cache configuration
       substituters =

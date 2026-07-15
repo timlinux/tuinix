@@ -20,12 +20,37 @@ jobs:
             experimental-features = nix-command flakes
       - name: Check Nix flake (x86_64 configs only)
         run: |
-          # Evaluate x86_64 configs - skip r36s (armv7l) which can't be checked on x86_64
+          # Evaluate x86_64 configs
           nix eval .#nixosConfigurations.laptop.config.system.build.toplevel --apply 'x: "ok"'
           nix eval .#nixosConfigurations.installer.config.system.build.toplevel --apply 'x: "ok"'
+      - name: Check all package collections evaluate
+        run: |
+          # A renamed/insecure/removed package in any collection must fail CI,
+          # not a user's install. Evaluates with every tuinix.packages.* on.
+          nix eval --impure --expr '
+            let f = builtins.getFlake "path:${builtins.toString ./.}";
+            in (f.nixosConfigurations.laptop.extendModules {
+              modules = [{
+                tuinix.packages = {
+                  tui = true;
+                  pentest = true;
+                  games = true;
+                  music = true;
+                  emergency = true;
+                };
+              }];
+            }).config.system.build.toplevel.drvPath' --apply 'x: "ok"'
+      - name: Check ISO ships everything the flake needs
+        run: |
+          # Re-evaluates the flake from a staging dir containing only the
+          # files listed in isoImage.contents -- catches directories that
+          # the flake references but the ISO does not ship.
+          ./scripts/check-iso-contents.sh
       - name: Format check
         run: |
-          nix run nixpkgs#nixfmt-classic -- --check \
+          # Use the flake's pinned formatter (nixpkgs#nixfmt-classic was
+          # removed upstream, so the registry version breaks CI)
+          nix run .#formatter.x86_64-linux -- --check \
             flake.nix installer.nix \
             modules/default.nix modules/system/*.nix modules/security/*.nix modules/networking/*.nix modules/locale/*.nix \
             software/*.nix \
@@ -43,9 +68,8 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           severity: warning
-          ignore_paths: ".git .github/workflows cmd/installer/vendor"
+          ignore_paths: ".git .github/workflows cmd/installer/vendor music"
           check_together: "yes"
-        continue-on-error: true
 
   go-quality:
     name: Go Quality
@@ -55,12 +79,24 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
+      - name: Go format check
+        working-directory: cmd/installer
+        run: |
+          UNFORMATTED=$(gofmt -l . | grep -v '^vendor/' || true)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "Files not gofmt-formatted:"
+            echo "$UNFORMATTED"
+            exit 1
+          fi
       - name: Go vet
         working-directory: cmd/installer
         run: go vet ./...
       - name: Go build
         working-directory: cmd/installer
         run: go build -o /dev/null ./...
+      - name: Go test
+        working-directory: cmd/installer
+        run: go test ./...
 
   build-iso:
     name: Build Installer ISO
@@ -85,6 +121,12 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
         continue-on-error: true
 
+      - name: Generate build info from VERSION
+        run: |
+          # Stamp this exact commit into the ISO (VERSION file is the
+          # single point of truth; tag builds get a clean version)
+          ./scripts/build-version.sh
+
       - name: Build installer ISO
         run: |
           nix build .#nixosConfigurations.installer.config.system.build.isoImage \
@@ -94,7 +136,15 @@ jobs:
             echo "ERROR: No ISO found in result/iso/"
             exit 1
           fi
+          # Stage artifacts under the canonical names:
+          # tuinix-<arch>-<version>.iso and tuinix-<arch>-<version>.md5
+          ISO_NAME=$(basename "$ISO_FILE")
+          mkdir -p artifacts
+          cp "$ISO_FILE" "artifacts/$ISO_NAME"
+          (cd artifacts && md5sum "$ISO_NAME" > "${ISO_NAME%.iso}.md5")
           echo "ISO_FILE=$ISO_FILE" >> $GITHUB_ENV
+          echo "ISO_NAME=$ISO_NAME" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=${ISO_NAME%.iso}" >> $GITHUB_ENV
           echo "ISO_SIZE=$(du -h "$ISO_FILE" | cut -f1)" >> $GITHUB_ENV
 
       - name: Generate package list from ISO closure
@@ -177,11 +227,11 @@ jobs:
           fi
           echo "TRIVY_FINDINGS=${TRIVY_FINDINGS:-0}" >> $GITHUB_ENV
 
-      - name: Upload ISO
+      - name: Upload ISO and checksum
         uses: actions/upload-artifact@v4
         with:
-          name: tuinix-installer-iso
-          path: result/iso/*.iso
+          name: ${{ env.ARTIFACT_NAME }}
+          path: artifacts/*
           retention-days: 7
 
       - name: Upload build reports
@@ -211,6 +261,7 @@ jobs:
               '',
               '| Metric | Value |',
               '|--------|-------|',
+              `| ISO | \`${process.env.ISO_NAME}\` |`,
               `| ISO Size | \`${process.env.ISO_SIZE}\` |`,
               `| Closure Size | \`${process.env.CLOSURE_SIZE}\` |`,
               `| Total Packages | \`${process.env.TOTAL_PACKAGES}\` |`,

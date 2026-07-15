@@ -12,42 +12,11 @@ tuinix is a NixOS-based distribution designed for users who prefer a terminal-on
 |--------------|------------|----------------|--------|
 | x86_64-linux | ISO | Standard PCs, laptops, servers | Fully supported |
 | aarch64-linux | ISO | ARM64 laptops, servers, SBCs with UEFI | Supported |
-| armv7l-linux | SD Image | R36S handheld (Allwinner A33) | Supported |
 
 ### Architecture Notes
 
 - **x86_64**: Primary development platform. Includes ZFS support.
 - **aarch64**: Supports UEFI-capable ARM64 devices. ZFS excluded due to compatibility.
-- **armv7l/R36S**: Uses stock vendor kernel (3.4.39) with NixOS userspace. See `docs/r36s-build-notes.md`
-
-### R36S Minimal Requirements
-
-The R36S build is stripped to the absolute minimum for a functional terminal device:
-
-| Component | Description |
-|-----------|-------------|
-| **Bootloader** | Stock U-Boot (from vendor firmware) |
-| **Kernel** | Stock vendor kernel 3.4.39 (from boot.img) |
-| **Init System** | systemd (minimal configuration) |
-| **Shell** | bash |
-| **Package Manager** | Nix with flakes support |
-| **Core Utilities** | busybox |
-| **Networking** | NetworkManager + nmtui |
-| **Tethering** | iPhone USB tethering (libimobiledevice, usbmuxd, ifuse) |
-| **Display** | Framebuffer terminal output to built-in display |
-
-**Explicitly Disabled:**
-- ZFS
-- Polkit
-- Documentation (man pages, info, NixOS docs)
-- Fonts/fontconfig
-- X11/Wayland
-- Sound (pipewire, pulseaudio)
-- Bluetooth
-- Printing
-- Firewall
-- udisks2
-- NixOS channels (flakes only)
 
 ## Installation Modes
 
@@ -126,6 +95,9 @@ TUI:
 - catimg (image display)
 - tuinix-installer (custom TUI installer)
 
+WiFi:
+- iwd + impala (WiFi management TUI; replaces wpa_supplicant/NetworkManager)
+
 iPhone Tethering:
 - libimobiledevice
 - ifuse
@@ -143,6 +115,16 @@ Core Tools:
 - curl, wget (network utilities)
 - htop (process viewer)
 - tree (directory listing)
+- tmux, unzip, file, man-pages
+- yazi (default file manager, alias: f)
+- tuinix-menu (gum launcher with drill-down app categories)
+- gum (TUI building blocks)
+
+Sound and Bluetooth (base):
+- wiremix (PipeWire mixer TUI, default sound application)
+- bluetui (Bluetooth management TUI)
+- brightnessctl (screen backlight control)
+- PipeWire with ALSA/Pulse shims; Bluetooth enabled
 
 Networking:
 - networkmanager (nmtui, nmcli)
@@ -152,6 +134,28 @@ Home Manager:
 - Git configuration (user name, email)
 - Default shell configuration
 ```
+
+### Optional Package Collections
+
+Selected during installation (checkboxes on the Package Sets step) and
+toggled later via `tuinix.packages.*` options:
+
+| Collection | Option | Contents |
+|------------|--------|----------|
+| TUI productivity suite | `tuinix.packages.tui` | neovim, helix, lazygit, btop, zellij, starship, atuin, nchat, iamb, scli, aerc, w3m, khal, taskwarrior, ... |
+| Pentest tools | `tuinix.packages.pentest` | aircrack-ng, nmap, metasploit, termshark, hashcat, sqlmap |
+| Terminal games | `tuinix.packages.games` | angband, crawl, cataclysm-dda, vitetris, nudoku, frotz, bsdgames, ... |
+| Sound and Music | `tuinix.packages.music` | tuinix-music-menu, elevator music generators, MIDI composer, fluidsynth, timidity, sox, csound, chuck, orca, abcmidi |
+| Emergency GUI | `tuinix.packages.emergency` | tuinix-emergency-gui: Brave in a cage Wayland kiosk, incognito, profile on tmpfs, bubblewrap-sandboxed (home folders hidden, no writes to ZFS) |
+
+### Installer Wizard Navigation
+
+Every wizard step shows a button bar pinned to the bottom of the TUI:
+Previous/Cancel bottom-left and the context-aware primary action
+(Next, Continue, Install!) bottom-right. Tab/Shift+Tab cycle focus
+between the step content and the buttons; Enter activates the focused
+button. The Previous button walks back through visited steps with
+earlier answers preserved for editing (secrets are always re-entered).
 
 ## Storage Modes
 
@@ -221,9 +225,11 @@ nix run .#test-install    # Build ISO and launch QEMU VM for testing
 
 ### Output
 
-ISOs are placed in the project root:
-- `tuinix.VERSION.x86_64.iso`
-- `tuinix.VERSION.aarch64.iso`
+Artifacts are placed in the project root, named
+`tuinix-<architecture>-<version>` (same for local and CI builds):
+
+- `tuinix-x86_64-VERSION.iso` + `tuinix-x86_64-VERSION.md5`
+- `tuinix-aarch64-VERSION.iso` + `tuinix-aarch64-VERSION.md5`
 
 ### Build Requirements
 
@@ -245,8 +251,7 @@ tuinix/
 │   ├── networking/        # NetworkManager, WiFi, iPhone tethering
 │   └── security/          # SSH, firewall
 ├── hosts/                 # Host configurations
-│   ├── laptop/            # Example laptop host
-│   └── r36s/              # R36S handheld (planned)
+│   └── laptop/            # Example laptop host
 ├── users/                 # User configurations
 ├── profiles/              # System profiles (VM, workstation)
 ├── templates/             # Disko templates
@@ -259,21 +264,8 @@ tuinix/
 | Configuration | Description |
 |---------------|-------------|
 | `laptop` | Example laptop with ZFS, NetworkManager |
-| `r36s` | R36S handheld (armv7l, stock kernel, SD image) |
 | `installer` | x86_64 installation ISO |
 | `installer-aarch64` | aarch64 installation ISO |
-
-### R36S SD Image Build
-
-```bash
-# Build the R36S SD card image
-nix build .#sd-r36s
-
-# Flash to SD card
-sudo dd if=result of=/dev/sdX bs=4M status=progress conv=fsync
-```
-
-Requires extracted stock firmware. See `docs/installation/r36s.md` for details.
 
 ## Module Options
 

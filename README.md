@@ -41,7 +41,7 @@ During installation, choose which optional package sets to enable:
 |---|---------|-----|---------|-------|
 | Base tools (vim, git, curl, htop, tmux) | Always | Always | Always | Always |
 | Terminal productivity (neovim, lazygit, btop, w3m, starship) | | Yes | | |
-| Messaging (nchat, gomuks, scli, aerc) | | Yes | | |
+| Messaging (nchat, iamb, scli, aerc) | | Yes | | |
 | Calendar & contacts (khal, khard, todoman) | | Yes | | |
 | Security auditing (aircrack-ng, nmap, metasploit, hashcat) | | | Yes | |
 | Network analysis (wireshark, termshark, sqlmap) | | | Yes | |

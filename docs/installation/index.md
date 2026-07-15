@@ -9,7 +9,6 @@ and all packages needed for a complete offline installation.
 |--------------|------------|----------------|
 | x86_64 | ISO | Standard PCs, laptops, servers |
 | aarch64 | ISO | ARM64 devices with UEFI boot |
-| armv7l | SD Image | R36S handheld (Allwinner A33) |
 
 ## Installation Modes
 
@@ -54,7 +53,6 @@ cd tuinix
 |--------|-------|
 | Physical machine | [Bare Metal Installation](bare-metal.md) |
 | QEMU, virt-manager, VirtualBox | [VM Installation](vm.md) |
-| R36S Handheld (Allwinner A33) | [R36S Installation](r36s.md) |
 
 ## Requirements
 
@@ -78,13 +76,21 @@ Every tuinix installation includes:
 
 - NetworkManager with `nmtui` for easy WiFi/network configuration
 - iPhone USB tethering support (libimobiledevice, usbmuxd)
+- `bluetui` for Bluetooth management
 
 **Core Tools:**
 
-- vim, git, curl, wget, htop, tree
+- vim, git, curl, wget, htop, tree, tmux
+- `yazi` file manager (alias `f`)
+- `wiremix` PipeWire mixer (default sound app)
+- `brightnessctl` screen backlight control
+- `tuinix-menu` — drill-down launcher for all installed TUI apps
+
+**Optional collections** (chosen during install): TUI productivity
+suite, pentest tools, terminal games, Sound and Music studio, and an
+Emergency GUI (sandboxed Brave kiosk). See
+[Software Collections](../usage/software.md).
 
 **ZFS Features (x86_64):**
 
 - Full ZFS support with encryption, compression, and snapshots
-
-See the [Specification](../SPECIFICATION.md) for complete package lists.

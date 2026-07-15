@@ -92,6 +92,25 @@ All code goes through pre-commit hooks:
 
 CI runs the same checks on every PR.
 
+## Versioning
+
+The `VERSION` file in the repository root is the **single point of
+truth** for the release version (bare semver, e.g. `0.7.1`). Never
+hardcode a version anywhere else. Everything derives from it:
+
+- `scripts/build-version.sh` writes `build-info.txt`, adding build
+  provenance: a release build (HEAD exactly on the `v<VERSION>` tag)
+  gets a clean `v0.7.1`; anything else becomes
+  `v0.7.1-dev-g<commit>[-dirty]`.
+- `installer.nix` parses `build-info.txt` for the ISO filename, the
+  installer package version, and the version string embedded in the Go
+  TUI (`version.txt`, shown on the splash and footer).
+- `monitor-builds.sh` and the `scripts/build-*` / `scripts/upload-*`
+  helpers read `VERSION` directly.
+
+To cut a release: update `VERSION`, add a `CHANGELOG.md` section, tag
+`v<VERSION>`, and build — the ISO and all displayed strings follow.
+
 ## Contributing
 
 See the [Contributing Guidelines](guidelines.md) for full details on submitting pull requests.

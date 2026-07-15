@@ -1,6 +1,7 @@
 package main
 
 import (
+	"runtime"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -115,6 +116,14 @@ var storageModes = []storageMode{
 	storageZFSStripe,
 	storageZFSRaidz,
 	storageZFSRaidz2,
+}
+
+// ZFS is only shipped on the x86_64 ISO, so other architectures must not
+// offer ZFS storage modes (the install would fail after formatting).
+func init() {
+	if runtime.GOARCH != "amd64" {
+		storageModes = []storageMode{storageXFS, storageXFSPartition}
+	}
 }
 
 var storageModeDescriptions = map[storageMode]string{
@@ -368,6 +377,16 @@ Terminal Games:
   Best-of-breed terminal games. Roguelikes,
   puzzles, arcade, text adventures.
 
+Sound and Music:
+  Audio control and music creation in the
+  terminal. wiremix mixer, elevator music
+  generators, MIDI composition, fluidsynth,
+  sox, csound, chuck, orca.
+
+Emergency GUI:
+  Brave in a minimal Wayland kiosk for
+  when you absolutely must have a GUI.
+
 You can always add/remove packages later
 via your NixOS configuration.`,
 		stepNum: 13,
@@ -456,39 +475,43 @@ var packageOptions = []packageOption{
 	{"TUI productivity suite", "neovim, helix, lazygit, btop, nchat, w3m, starship, atuin, zellij"},
 	{"Pentest tools", "aircrack-ng, nmap, metasploit, wireshark, termshark, hashcat, sqlmap"},
 	{"Terminal games", "angband, crawl, cataclysm-dda, vitetris, nudoku, frotz, bsdgames"},
+	{"Sound and Music", "wiremix, generators, MIDI composer, fluidsynth, sox, csound, chuck, orca"},
+	{"Emergency GUI", "Brave browser in a minimal Wayland kiosk (tuinix-emergency-gui)"},
 }
 
 // Config holds all installation configuration
 type Config struct {
-	Username      string
-	Fullname      string
-	Email         string
-	Password      string
-	Hostname      string
-	Disk          string   // Primary disk (single-disk modes, or boot disk for multi-disk)
-	Disks         []string // All selected disks (multi-disk modes)
-	HostID        string
-	Passphrase    string
-	StorageMode   storageMode
-	Locale        string
-	Keymap        string
-	ConsoleKeyMap string
-	EnableTUI     bool
-	EnablePentest bool
-	EnableGames   bool
-	EnableSSH     bool
-	GitHubUser    string
-	SSHKeys       []string
-	SpaceBoot     string
-	SpaceNix      string
-	SpaceHome     string
-	SpaceAtuin    string
-	ZFSPoolName   string
-	DisplayRes    string // Detected framebuffer resolution (e.g. "1920x1080")
-	ProjectRoot   string
-	WorkDir       string
-	BootPartition string // Boot/ESP partition path for partition mode
-	RootPartition string // Root partition path for partition mode
+	Username        string
+	Fullname        string
+	Email           string
+	Password        string
+	Hostname        string
+	Disk            string   // Primary disk (single-disk modes, or boot disk for multi-disk)
+	Disks           []string // All selected disks (multi-disk modes)
+	HostID          string
+	Passphrase      string
+	StorageMode     storageMode
+	Locale          string
+	Keymap          string
+	ConsoleKeyMap   string
+	EnableTUI       bool
+	EnablePentest   bool
+	EnableGames     bool
+	EnableMusic     bool
+	EnableEmergency bool
+	EnableSSH       bool
+	GitHubUser      string
+	SSHKeys         []string
+	SpaceBoot       string
+	SpaceNix        string
+	SpaceHome       string
+	SpaceAtuin      string
+	ZFSPoolName     string
+	DisplayRes      string // Detected framebuffer resolution (e.g. "1920x1080")
+	ProjectRoot     string
+	WorkDir         string
+	BootPartition   string // Boot/ESP partition path for partition mode
+	RootPartition   string // Root partition path for partition mode
 }
 
 // Particle for fire effect
@@ -549,6 +572,10 @@ type model struct {
 	pkgSelected  []bool // For package set checkboxes [TUI, Pentest, Games]
 	locales      []string
 	keymaps      []keymapEntry
+
+	// Wizard navigation
+	focusZone int            // 0 = content, 1 = back/cancel button, 2 = next button
+	history   []installState // visited wizard states, for the Previous button
 
 	// Animation state
 	fireParticles []fireParticle

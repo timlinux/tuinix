@@ -64,6 +64,45 @@ func (m model) renderFooter() string {
 	)
 }
 
+// renderButtonBar renders the wizard navigation buttons: Previous/Cancel
+// pinned bottom-left and the context-aware primary action (Next, Continue,
+// Install!) pinned bottom-right. Tab/Shift+Tab cycle focus onto them.
+func (m model) renderButtonBar() string {
+	width := m.width - 4
+
+	backLabel := "← Previous"
+	if len(m.history) == 0 {
+		backLabel = "✖ Cancel"
+	}
+
+	nextLabel := "Next →"
+	switch m.state {
+	case stateSummary:
+		nextLabel = "Continue →"
+	case stateConfirm:
+		nextLabel = "⚠ Install!"
+	}
+
+	backStyle, nextStyle := buttonStyle, buttonStyle
+	if m.focusZone == 1 {
+		backStyle = buttonFocusedStyle
+	}
+	if m.focusZone == 2 {
+		nextStyle = buttonFocusedStyle
+	}
+
+	left := backStyle.Render(backLabel)
+	right := nextStyle.Render(nextLabel)
+	gap := width - lipgloss.Width(left) - lipgloss.Width(right)
+	if gap < 1 {
+		gap = 1
+	}
+	hint := grayStyle.Width(width).Align(lipgloss.Center).
+		Render("Tab to switch focus | Enter to activate")
+	bar := lipgloss.JoinHorizontal(lipgloss.Top, left, strings.Repeat(" ", gap), right)
+	return lipgloss.JoinVertical(lipgloss.Left, bar, hint)
+}
+
 // renderHorizontalLine creates a horizontal separator
 func (m model) renderHorizontalLine() string {
 	return grayStyle.Render(strings.Repeat("─", m.width-4))
@@ -368,6 +407,12 @@ func formatPackageSets(c Config) string {
 	if c.EnableGames {
 		sets = append(sets, "Games")
 	}
+	if c.EnableMusic {
+		sets = append(sets, "Sound and Music")
+	}
+	if c.EnableEmergency {
+		sets = append(sets, "Emergency GUI")
+	}
 	return strings.Join(sets, " + ")
 }
 
@@ -379,6 +424,7 @@ func (m model) getInstallStepNames() []string {
 			"Generating hardware configuration",
 			"Installing NixOS",
 			"Configuring ZFS boot",
+			"Copying flake to new system",
 			"Setting up user flake",
 			"Copying install log",
 			"Finalizing ZFS pool",
@@ -401,6 +447,7 @@ func (m model) getInstallStepNames() []string {
 		"Formatting disk with XFS",
 		"Generating hardware configuration",
 		"Installing NixOS",
+		"Copying flake to new system",
 		"Setting up user flake",
 		"Copying install log",
 	}

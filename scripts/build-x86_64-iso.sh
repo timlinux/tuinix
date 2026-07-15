@@ -2,11 +2,20 @@
 # Build x86_64 ISO with progress tracking
 set -e
 
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+VERSION="v$(tr -d '[:space:]' <VERSION)"
+
+# Works both in CI (features preconfigured) and on stock nix installs
+export NIX_CONFIG="experimental-features = nix-command flakes"
+
 echo "=========================================="
-echo "Building tuinix x86_64 ISO"
+echo "Building tuinix $VERSION x86_64 ISO"
 echo "=========================================="
 echo "Started: $(date)"
 echo ""
+
+# Refresh build provenance from the VERSION file (single point of truth)
+./scripts/build-version.sh
 
 # Build the ISO
 nix build .#nixosConfigurations.installer.config.system.build.isoImage \
@@ -27,9 +36,13 @@ if [[ -L result-x86_64 ]]; then
         echo "ISO: $ISO_PATH"
         echo "Size: $SIZE"
 
-        # Copy to release name
-        cp "$ISO_PATH" tuinix.v0.7.0.x86_64.iso
-        echo "Copied to: tuinix.v0.7.0.x86_64.iso"
+        # Copy out under its canonical name (tuinix-<arch>-<version>.iso)
+        # and generate a matching .md5 checksum
+        ISO_NAME=$(basename "$ISO_PATH")
+        cp "$ISO_PATH" "./$ISO_NAME"
+        md5sum "$ISO_NAME" >"${ISO_NAME%.iso}.md5"
+        echo "Copied to:  ./$ISO_NAME"
+        echo "Checksum:   ./${ISO_NAME%.iso}.md5"
     fi
 fi
 

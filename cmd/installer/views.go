@@ -28,7 +28,7 @@ func (m model) viewWizard() string {
 	// Content area - two columns
 	leftWidth := m.width/2 - 4
 	rightWidth := m.width/2 - 4
-	contentHeight := m.height - 22 // Account for header, lines, step indicator, footer
+	contentHeight := m.height - 24 // Account for header, lines, step indicator, buttons, footer
 
 	if contentHeight < 10 {
 		contentHeight = 10
@@ -63,6 +63,9 @@ func (m model) viewWizard() string {
 		rightBox,
 	)
 
+	// Navigation buttons (bottom-left / bottom-right, Tab to focus)
+	buttons := m.renderButtonBar()
+
 	// Footer
 	footer := m.renderFooter()
 
@@ -73,6 +76,7 @@ func (m model) viewWizard() string {
 		stepInd,
 		line2,
 		contentArea,
+		buttons,
 		footer,
 	)
 
@@ -175,7 +179,7 @@ func (m model) viewSplash() string {
 	version := detailStyle.Copy().
 		Align(lipgloss.Center).
 		Width(m.width - 4).
-		Render("Installer v1.0")
+		Render("Installer " + strings.TrimSpace(versionInfo))
 
 	kartoza := lipgloss.NewStyle().
 		Foreground(colorOrange).
@@ -290,7 +294,7 @@ func (m model) viewInstalling() string {
 			Border(lipgloss.NormalBorder()).
 			BorderForeground(colorDimGray).
 			Foreground(colorDimGray).
-			Width(m.width - 8).
+			Width(m.width-8).
 			Padding(0, 1)
 		var tailLines []string
 		for _, l := range m.logTail {
@@ -454,7 +458,7 @@ func (m model) viewNetworkCheck() string {
 		spinChars := []string{"|", "/", "-", "\\"}
 		spin := spinChars[m.animTick%len(spinChars)]
 
-		status = warningStyle.Render("["+spin+"] Checking network connectivity...")
+		status = warningStyle.Render("[" + spin + "] Checking network connectivity...")
 		if m.animTick > 5 {
 			// Check already returned failure
 			status = errorStyle.Render("No internet connection detected.") +
@@ -462,7 +466,7 @@ func (m model) viewNetworkCheck() string {
 				"An internet connection is required during installation.\n"+
 					"Press q to exit the installer, then configure your network:\n\n"+
 					"  Wired:  Should connect automatically via DHCP\n"+
-					"  WiFi:   Use wpa_cli or iwctl to connect\n\n"+
+					"  WiFi:   Run impala (or iwctl) to connect\n\n"+
 					"Then run sudo installer again.") +
 				"\n\n" + grayStyle.Render("Press Enter to retry | q to exit")
 		}
